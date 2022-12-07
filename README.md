@@ -6,14 +6,15 @@ This repository is an attempt at translating the stripmap class of the [Schwarz-
 
 Initialize a Polygon with counterclockwise vertices.
 ```
-x = np.array([1, 2, 1, 0, 0, -1])
-y = np.array([-1, 0, 1, 1, 0, -1])
+x = np.array([1, 2, 1, 0, 0, -1])  # example x vertices
+y = np.array([-1, 0, 1, 1, 0, -1]) # example y vertices
 poly = Polygon(x, y)
 ```
 
 Initialize a Stripmap; prevertices are automatically computed. Prevertex computation needs to be more thoroughly tested.
 ```
-map = Stripmap(poly)
+ends = [1, 4] # example of ends (one-indexed)
+map = Stripmap(poly, ends)
 ```
 
 Compute inverse map *(to be implemented in the near future)*
