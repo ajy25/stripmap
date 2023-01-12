@@ -1,13 +1,23 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import copy
 
 class Polygon:
-    # fields
+    '''
+    STRIPMAP (Class)
+
+    Description: 
+
+    Methods:
+
+    Reference:
+    '''
+
     w = None
     n = None
     alpha = None
 
-    # methods
+
     def __init__(self, x_vertices: np.array, y_vertices: np.array) -> None:
         '''Constructs a Polygon object (Gamma) with complex vertices w.
 
@@ -25,7 +35,7 @@ class Polygon:
             raise Exception('Invalid input vertices.')
         
         # combine for complex w, determine n
-        self.w = x_vertices + 1j * y_vertices
+        self.w = np.array(x_vertices) + 1j * np.array(y_vertices)
         self.n = len(self.w)
 
         # compute alpha
@@ -61,6 +71,7 @@ class Polygon:
         return
     
     def plot_poly(self) -> plt.figure:
+        '''Returns a matplotlib plot depicting the polygon.'''
         fig = plt.figure()
         plt.plot(np.real(np.hstack([self.w, [self.w[0]]])), \
             np.imag(np.hstack([self.w, [self.w[0]]])))
@@ -68,10 +79,13 @@ class Polygon:
     
     # getters
     def get_vertices(self) -> np.array:
-        return self.w
+        '''Returns the vertices of the polygon.'''
+        return copy.copy(self.w)
     
     def get_angles(self) -> np.array:
-        return self.alpha
+        '''Returns the interior angles of the polygon.'''
+        return copy.copy(self.alpha)
 
     def get_size(self) -> int:
+        '''Returns the size of the polygon.'''
         return self.n

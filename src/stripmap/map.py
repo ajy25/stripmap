@@ -3,20 +3,20 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import copy
 from polygon import Polygon
-from num_methods.solveparam import *
+from num_methods.solve_param import *
+from num_methods.compute_map import *
 
-'''
-STRIPMAP (Class)
-
-Description:
-
-Methods:
-
-
-Reference:
-'''
 class Stripmap:
-    # fields
+    '''
+    STRIPMAP (Class)
+
+    Description:
+
+    Methods:
+
+    Reference:
+    '''
+
     p = None                # Polygon object: w (vertices), alpha (angles)
     z = None                # nparray, solved prevertices
     c = None                # float, parameter
@@ -29,7 +29,6 @@ class Stripmap:
     tol = 10 ** (-8)        # default tolerance
 
 
-    # methods
     def __init__(self, p: Polygon, ends: np.array) -> None:
         '''Constructs a Stripmap object and solves for its parameters.
         
@@ -70,7 +69,7 @@ class Stripmap:
         # method end
         return
     
-    def plot_poly(self, ) -> None:
+    def plot_poly(self) -> None:
         '''Visualization of Polygon vertices and the stripmap.'''
 
         fig = self.p.plot_poly()
@@ -104,8 +103,7 @@ class Stripmap:
         print(self.info)
         print("c:", self.c)
     
-    # getters
-    def get_w(self):
+    def get_w(self) :
         return copy.copy(self.p.get_vertices())
     
     def get_z(self):
@@ -119,14 +117,11 @@ class Stripmap:
     
     def get_ends(self):
         return copy.copy(self.ends)
-    
-    def get_c(self):
-        return copy.copy(self.c)
 
-if __name__ == '__main__':
-    x_vert = np.array([0, 0.5, 1, 1.5, 2, 0, -1, -1.5, -2, -2])
-    y_vert = np.array([2, 4, 6, 10, 12, 10, 8, 4, 1, 0])
+# if __name__ == '__main__':
+#     x_vert = np.array([0, 0.5, 1, 1.5, 2, 0, -1, -1.5, -2, -2])
+#     y_vert = np.array([2, 4, 6, 10, 12, 10, 8, 4, 1, 0])
 
-    test_poly =  Polygon(x_vert, y_vert)
+#     test_poly =  Polygon(x_vert, y_vert)
 
-    test_map = Stripmap(test_poly, [1, 6])
+#     test_map = Stripmap(test_poly, [1, 6])
