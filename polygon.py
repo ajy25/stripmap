@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 class Polygon:
     # fields
@@ -53,11 +54,17 @@ class Polygon:
 
         # check angles sum to appropriate value
         if np.abs(np.sum(self.alpha) - (self.n - 2)) > np.finfo(float).eps:
-            raise Exception('Invalid polygon. Angles sum to ' + \
+            raise Exception('Invalid polygon. Angles sum to ', \
                 np.sum(self.alpha) + ".")
         
         # method end
         return
+    
+    def plot_poly(self) -> plt.figure:
+        fig = plt.figure()
+        plt.plot(np.real(np.hstack([self.w, [self.w[0]]])), \
+            np.imag(np.hstack([self.w, [self.w[0]]])))
+        return fig
     
     # getters
     def get_vertices(self) -> np.array:
