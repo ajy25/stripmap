@@ -17,8 +17,8 @@ def stparam(map) -> tuple:
     ends = map.get_ends()               # ends
     map_tol = map.tol                   # tolerance
 
-    renum = np.hstack([np.arange(ends[0], N), \
-        np.arange(ends[0])])
+    renum = np.hstack((np.arange(ends[0], N), \
+        np.arange(ends[0])))
 
     k = np.nonzero(renum == ends[1])[0][0] + 1
     

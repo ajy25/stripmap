@@ -8,7 +8,7 @@ version = "0.0.1"
 authors = [
   { name="Andrew J Yang", email="andrew_j_yang@brown.edu" },
 ]
-description = "A small example package"
+description = "Conformal mapping from infinite strip to bounded polygon"
 readme = "README.md"
 requires-python = ">=3.7"
 classifiers = [

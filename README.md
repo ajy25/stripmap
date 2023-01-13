@@ -5,8 +5,7 @@ This repository is an attempt at translating the stripmap class of the [Schwarz-
 ## Usage
 Import the Stripmap and Polygon classes.
 ```
-from stripmap.map import Stripmap
-from stripmap.poly import Polygon
+from stripmap.class import Stripmap, Polygon
 ```
 
 
