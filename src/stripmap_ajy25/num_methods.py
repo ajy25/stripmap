@@ -1,8 +1,10 @@
 import copy
 import numpy as np
 import scipy.linalg as la
+import random
 from scipy.special import gamma
 from scipy.optimize import root
+from scipy.integrate import solve_ivp
 
 map_tol = 10 ** (-8)                    # default tolerance
 
@@ -186,7 +188,7 @@ def stpfun(y: np.array, n: int, nb: int, beta: np.array, \
     # return np.real(np.hstack([F1, np.real(F2), np.imag(F2)]))
     return np.real(np.hstack([F1, np.real(F2), np.imag(F2)]))
 
-def stderiv(zp: np.array, z: np.array, beta: np.array, c: float, \
+def stderiv(zp: np.array, z: np.array, beta: np.array, c: float = 1, \
     j: float = -1) -> np.array:
     '''Returns derivative at points on stripmap.'''
 
@@ -408,3 +410,324 @@ def gaussj(n: int, alpha: float, beta: float) -> tuple:
         w = np.array([w])
 
     return z, w
+
+def stmap(zp: np.array, map) -> np.array:
+    '''Helper function for the forward map.'''
+
+    tol = map.tol
+    nqpts = int(np.max([np.ceil(-np.log10(tol)), 2]))
+    qdata = scqdata(map.get_beta(), nqpts)
+    tol = 10 ** (-np.size(qdata, 0))
+    lenzp = len(zp)
+    wp = np.zeros([lenzp, 1], dtype='complex_')
+    z = map.get_z()
+    beta = map.get_beta()
+    c = map.c
+
+    n = len(z)
+
+    zprow = zp[np.newaxis]
+    zpnew = copy.copy(zprow)
+    znew = copy.copy(np.transpose(z[np.newaxis]))
+    w = map.get_w()
+
+    for i in range(n - 1):
+        zpnew = np.vstack([zpnew, zprow])
+    for i in range(lenzp - 1):
+        znew = np.hstack([znew, np.transpose(z[np.newaxis])])
+
+    temp = np.abs(zpnew - znew)
+
+    dist = np.amin(temp, axis=0)
+    sing = np.argmin(temp, axis=0)
+
+    vertex = dist < tol
+    wp[vertex] = wp[sing[vertex]]
+    leftend = np.logical_and(np.isinf(zp), (np.real(zp) < 0))
+    wp[leftend] = w[z == -np.inf]
+    rightend = np.logical_and(np.isinf(zp), (np.real(zp) > 0))
+    wp[rightend] = w[z == np.inf]
+    vertex = np.logical_or(vertex, np.logical_or(leftend, rightend))
+    wp = np.reshape(wp, lenzp)
+
+    atinf = np.argwhere(np.isinf(w))
+    bad = np.logical_and(np.isin(sing, atinf), np.logical_not(vertex))
+    
+    if np.any(bad):
+        print("Warning: badness in stmap.\nThis has yet to be debugged." + \
+            " Take care in debugging the variable 'bad'.")
+        zf = copy.copy(np.transpose(z[np.newaxis]))
+        zf[np.isinf(w)] = np.inf
+        zfnew = copy.copy(zf)
+        for i in range(lenzp - 1):
+            zfnew = np.hstack([zfnew, zf])
+        
+
+        temp = np.abs(zpnew[np.ones([n, 1]),bad] - zfnew)
+        
+        tmp = np.amin(temp, axis=0)
+        s = np.argmin(temp, axis=0)
+    
+        mid1 = np.real(z[s]) + 1j / 2
+        mid2 = np.real(zp[bad]) + 1j / 2
+    else:
+        bad = np.zeros(lenzp).astype(bool)
+
+    zs = z[sing]
+    ws = w[sing]
+    normal = np.logical_and(np.logical_not(bad), np.logical_not(vertex))
+    normal = np.transpose(normal)
+
+    if np.any(normal):
+        I = stquad(zs[normal],zp[normal],sing[normal], z, beta, \
+            qdata)
+        wp[normal] = ws[normal] + c * I
+    
+    if np.any(bad):
+        I1 = stquad(zs[bad], mid1, sing(bad), z, beta, qdata)
+        I2 = stquadh(mid1, mid2, np.zeros([sum(bad),1]), z, beta,\
+            qdata)
+        I3 = -stquad(zp[bad], mid2, np.zeros([sum(bad),1]), z, \
+            beta, qdata)
+        wp[bad] = ws[bad] + c * (I1 + I2 + I3)
+    
+    return wp
+
+def stinvmap(wp: np.array, map) -> np.array:
+    '''Helper function for the inverse map.'''
+
+    tol = map.tol
+    w = map.get_w()
+    z = map.get_z()
+    c = map.c
+    n = len(w)
+    lenwp = len(wp)
+    zp = np.zeros(lenwp, dtype='complex_')
+    beta = map.get_beta()
+
+    nqpts = int(np.max([np.ceil(-np.log10(tol)), 2]))
+    qdata = scqdata(beta, nqpts)
+
+    done = np.zeros(lenwp, dtype='bool')
+
+    eps = 2.2204 * 10 ** (-16)
+
+    for i in range(n):
+        idx = np.nonzero((np.abs(wp - w[i]) < 3 * eps))[0]
+        zp[idx] = z[i]
+        done[idx] = True
+    lenwp = lenwp - np.sum(done)
+
+    if lenwp == 0:
+        return zp
+    
+    z0, w0 = findz0(wp, map, qdata)
+
+    scale = wp[np.logical_not(done)] - w0
+
+    z0 = np.hstack((np.real(z0), np.imag(z0)))
+
+
+    def stimapfun(wp_stimapfun: np.array, yp_stimapfun: np.array) \
+        -> np.array:
+        '''Used by stinvmap for solution of ODE'''
+        lenyp = len(yp_stimapfun)
+        lenzp = int(lenyp / 2)
+
+        zp = yp_stimapfun[0:lenzp] + 1j * yp_stimapfun[lenzp:lenyp]
+
+        f = np.divide(scale, stderiv(zp, z, beta, c)[0])
+
+        return np.concatenate((np.real(f), np.imag(f)))
+
+    odesolver = solve_ivp(stimapfun, t_span=(0, 1), y0=z0, method='RK23')
+
+    y = np.transpose(odesolver.y)
+    t = odesolver.t
+
+    m = np.shape(y)[0]
+    leny = np.shape(y)[1]
+
+    zp[np.logical_not(done)] = y[m-1, 0:lenwp] + 1j * y[m-1, lenwp:leny]
+
+
+    zn = copy.copy(zp)
+    k = 0
+
+    maxiter = 100
+
+    while np.sum(np.logical_not(done)) != 0 and k < maxiter:
+        F = wp[np.logical_not(done)] - stmap(zn[np.logical_not(done)], map)
+        dF = c * stderiv(zn[np.logical_not(done)], z, beta)[0]
+        zn[np.logical_not(done)] = zn[np.logical_not(done)] + \
+            np.divide(F, dF)
+        done[np.logical_not(done)] = np.abs(F) < tol
+        k = k + 1
+    
+    if np.sum(abs(F) > tol) > 0:
+        raise Warning('Check solution. Warning in stinvmap.')
+    
+    return zn
+
+def findz0(wp: np.array, map, qdata: np.array) -> tuple:
+    '''Returns starting points for computing inverses'''
+    eps = 2.2204 * 10 ** (-16)
+    z = map.get_z()
+    w = map.get_w()
+    beta = map.get_beta()
+    c = map.c
+
+    n = len(w)
+    z0 = copy.copy(wp)
+    w0 = copy.copy(wp)
+
+    atinf = np.nonzero(np.isinf(z).astype(int))[0]
+    renum = np.hstack((np.arange(atinf[0], n), \
+        np.arange(0, atinf[0] - 1)))
+    w = w[renum]
+    z = z[renum]
+    beta = beta[renum]
+    qdata[:, 0:n] = qdata[:, renum]
+    qdata[:, (n+1):(2*n+1)] = qdata[:, (renum + n + 1)]
+    kinf = np.max(np.nonzero(np.isinf(z).astype(int))[0])
+    argw = np.cumsum(np.hstack((np.angle(w[2] - w[1]), -np.pi * \
+        np.hstack((beta[2:n], beta[0])))))
+    argw = np.hstack((argw[n-1], argw[0:(n-1)]))
+
+    infty = np.isinf(w)
+    fwd = np.roll(np.arange(0, n), -1)
+
+    anchor = np.zeros(n, dtype='complex_')
+    anchor[np.logical_not(infty)] = w[np.logical_not(infty)]
+    anchor[infty] = w[fwd[infty]]
+
+    direcn = np.exp(1j * argw)
+    direcn[infty] = -direcn[infty]
+    ln = np.abs(w[fwd] - w)
+
+    factor = 0.5
+    m = len(wp)
+    done = np.zeros(m)
+    iter = 0
+    tol = 1000 * 10 ** (-np.shape(qdata)[0])
+
+    zbase = np.empty(n, dtype='complex_')
+    zbase[:] = np.nan
+    wbase = copy.copy(zbase)
+    idx = []
+
+    not_finished = True
+
+    while m > 0 and not_finished:
+        for i in range(n):
+            if i == 0:
+                zbase[i] = np.min((-1, np.real(z[1]))) / factor
+            elif i == kinf - 1:
+                zbase[i] = np.max((1, np.real(z[kinf-1]))) / factor
+            elif i == kinf:
+                zbase[i] = 1j + np.max((1, np.real(z[kinf+1]))) / factor
+            elif i == n-1:
+                zbase[i] = 1j + np.min((-1, np.real(z[n-1]))) / factor
+            else:
+                zbase[i] = z[i] + factor * (z[i+1] - z[i])
+        
+            # print(stmap(np.array([zbase[i]]), map))
+            wbase[i] = stmap(np.array([zbase[i]]), map)[0]
+
+            proj = np.real((wbase[i] - anchor[i]) * np.conj(direcn[i]))
+            wbase[i] = anchor[i] + proj * direcn[i]
+        
+        if len(idx) == 0:
+            temp_wp = wp[np.logical_not(done)]
+            wp_row = temp_wp[np.newaxis]
+            new_wp = copy.copy(wp_row)
+            
+            for j in range(n-1):
+                new_wp = np.vstack((new_wp, wp_row))
+
+            wbase_row = wbase[np.newaxis]
+            wbase_col = np.transpose(wbase_row)
+            new_wbase = copy.copy(wbase_col)
+            for j in range(m-1):
+                new_wbase = np.hstack((new_wbase, wbase_col))
+                
+            idx = np.argmin(np.abs(new_wp - new_wbase), axis=0)
+
+            dist = np.min(np.abs(new_wp - new_wbase), axis=0)
+        
+        else:
+            not_done = np.logical_not(done)
+            
+            print(not_done)
+
+            idx[not_done] = np.remainder(idx[not_done], n) + 1
+        
+        not_done = np.logical_not(done)
+        w0[not_done] = wbase[idx[not_done]]
+        z0[not_done] = zbase[idx[not_done]]
+
+        for i in range(n):
+            
+            active = np.logical_and(idx == i, not_done)
+
+            if np.any(active):
+                done[active] = np.ones(np.sum(active))
+
+                for k in range(n):
+                    if k == i:
+                        continue
+                    A = np.array([np.real(direcn[k]), np.imag(direcn[k])])
+                    findactive = np.nonzero(active)
+                    for p in findactive:
+                        dif = w0[p] - wp[p]
+
+                        temp_A_add = np.array([np.real(dif), np.imag(dif)])
+                        temp_A_add = np.reshape(temp_A_add, np.shape(A))
+
+                        # print('A', A)
+                        # print('B', temp_A_add)
+
+                        A = np.vstack((A, temp_A_add))
+                        A = np.transpose(A)
+                        rcondA = 1 / np.linalg.cond(A)
+
+                        if rcondA > eps:
+                            wpx = np.real((wp[p] - anchor[k]) / direcn[k])
+                            w0x = np.real((w0[p] - anchor[k]) / direcn[k])
+
+                            if (wpx * w0x < 0) or \
+                                ((wpx - ln[k]) * (w0x - ln[k]) < 0):
+                                done[p] = 0
+                            
+                        else:
+                            dif = w0[p] - anchor[k]
+                            b = np.array([[np.real(dif)], [np.imag(dif)]])
+                            s = la.solve(A, b)
+
+                            if s[0] >= 0 and s[0] <= ln[k]:
+                                if np.abs(s[1] - 1) < tol:
+                                    z0[p] = zbase[k]
+                                    w0[p] = wbase[k]
+                                elif np.abs(s[1]) < tol: 
+                                    if np.real(np.conj(\
+                                        wp[p] - w0[p]) * 1j * direcn[k]) > 0:
+                                        done[p] = 0
+                                elif s[1] > 0 and s[1] < 1:
+                                    done[p] = 0
+            
+                m = sum(np.logical_not(done))
+                if m == 0:
+                    not_finished = False
+                    break
+        
+        if iter > 2 * n:
+            raise Exception('Error has occurred.')
+        else:
+            iter = iter + 1
+        factor = random.random()
+    
+
+    return z0, w0
+
+
+

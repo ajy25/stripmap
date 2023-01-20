@@ -1,5 +1,5 @@
 import numpy as np
-from stripmap import Stripmap, Polygon
+from map import Stripmap, Polygon
 
 
 x = [1, 2, 1, 0, 0, -1]

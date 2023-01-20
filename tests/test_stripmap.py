@@ -3,15 +3,20 @@ import numpy as np
 import scipy.linalg as la
 import matlab
 import matlab.engine
-import sys
+import sys, pathlib
 
-sys.path.append('../src/stripmap')
+# dumb way of adding appropriate paths for testing
+sys.path.append(str(pathlib.Path().resolve()) + '/')
+sys.path.append(str(pathlib.Path().resolve()) + '/src/stripmap_ajy25')
 
-from polygon import Polygon
-from num_methods.solve_param import *
+from src.stripmap_ajy25.map import Polygon
+from src.stripmap_ajy25.map import Stripmap
+from src.stripmap_ajy25.num_methods import stpfun, stderiv
 
 
-def test_solve_param():
+def test_stpfun():
+    '''Simple test of stpfun, a cruicial function in solving
+    the parameter problem.'''
     x_vert = np.array([0, 0.5, 1, 1.5, 2, 0, -1, -1.5, -2, -2])
     y_vert = np.array([2, 4, 6, 10, 12, 10, 8, 4, 1, 0])
 
@@ -38,7 +43,7 @@ def test_solve_param():
     right = right + 1
 
     eng = matlab.engine.start_matlab()
-    eng.cd('testing')
+    eng.cd('tests')
     y1 = matlab.double(y1.tolist(), is_complex=True)
     beta = matlab.double(beta.tolist(), is_complex=True)
     left = matlab.double(left.tolist(), is_complex=False)
@@ -59,5 +64,42 @@ def test_solve_param():
 
     assert np.abs(dif_norm) < 10 ** (-8)
 
+
+
+def test_stderiv():
+    '''Simple test of stderiv, a crucial function in both
+    the process of solving for parameters and the inverse mapping.'''
+
+    x_vert = np.array([0, 0.5, 1, 1.5, 2, 0, -1, -1.5, -2, -2])
+    y_vert = np.array([2, 4, 6, 10, 12, 10, 8, 4, 1, 0])
+
+    test_poly =  Polygon(x_vert, y_vert)
+
+    test_map = Stripmap(test_poly, [1, 6])
+
+    np.random.seed(1)
+
+    # random points within a region of the polygon
+    zp = 0.25 * np.random.rand(6) + 6j + 2j * np.random.rand(6)
+    z = test_map.get_z()
+    beta = test_map.get_beta()
+    c = test_map.c
+
+    result = stderiv(zp, z, beta, c)
+
+    eng = matlab.engine.start_matlab()
+    eng.cd('tests')
+
+    zp = matlab.double(zp.tolist(), is_complex=True)
+    z = matlab.double(z.tolist(), is_complex=True)
+    beta = matlab.double(beta.tolist(), is_complex=False)
+    c = matlab.double(c, is_complex=True)
+
+    matlab_result = eng.stderiv(zp, z, beta, c)
+
+    dif_norm = la.norm(matlab_result - result)
+
+    assert np.abs(dif_norm) < 10 ** (-8)
+
 if __name__ == '__main__':
-    test_solve_param()
+    test_stderiv()

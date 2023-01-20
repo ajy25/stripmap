@@ -2,12 +2,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import copy
-from num_methods.solve_param import stparam
-from num_methods.compute_map import stmap, stinvmap
+
+from num_methods import stparam, stmap, stinvmap, findz0, stderiv
 
 class Polygon:
     '''
-    STRIPMAP (Class)
+    POLYGON (Class)
 
     Description: 
 
@@ -82,11 +82,11 @@ class Polygon:
     
     # getters
     def get_vertices(self) -> np.array:
-        '''Returns the vertices of the polygon.'''
+        '''Returns a shallow copy of the vertices of the polygon.'''
         return copy.copy(self.w)
     
     def get_angles(self) -> np.array:
-        '''Returns the interior angles of the polygon.'''
+        '''Returns a shallow copy of the interior angles of the polygon.'''
         return copy.copy(self.alpha)
 
     def get_size(self) -> int:
@@ -207,7 +207,7 @@ class Stripmap:
         wp = np.array(xp) + 1j * np.array(yp)
         self.wp = wp
 
-        zp = stinvmap(wp)
+        zp = stinvmap(wp, self)
         self.zp = zp
         
         return zp
@@ -240,10 +240,21 @@ class Stripmap:
         '''Returns a copy of ends array.'''
         return copy.copy(self.ends)
 
-# if __name__ == '__main__':
-#     x_vert = np.array([0, 0.5, 1, 1.5, 2, 0, -1, -1.5, -2, -2])
-#     y_vert = np.array([2, 4, 6, 10, 12, 10, 8, 4, 1, 0])
+if __name__ == '__main__':
+    x_vert = np.array([0, 0.5, 1, 1.5, 2, 0, -1, -1.5, -2, -2])
+    y_vert = np.array([2, 4, 6, 10, 12, 10, 8, 4, 1, 0])
 
-#     test_poly =  Polygon(x_vert, y_vert)
+    wp_x_vert = np.array([0, -1])
+    wp_y_vert = np.array([6, 2])
+    wp = np.array([6j, -1 + 2j])
 
-#     test_map = Stripmap(test_poly, [1, 6])
+    test_poly =  Polygon(x_vert, y_vert)
+
+    test_map = Stripmap(test_poly, [1, 6])
+    qdata = test_map.get_qdata()
+
+    print()
+    print(test_map.evalinv(wp_x_vert, wp_y_vert))
+
+    
+
