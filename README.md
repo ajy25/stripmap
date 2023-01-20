@@ -5,7 +5,7 @@ This repository is an attempt at translating the stripmap class of the [Schwarz-
 ## Usage
 Import the Stripmap and Polygon classes.
 ```
-from stripmap.class import Stripmap, Polygon
+from map import Stripmap, Polygon
 ```
 
 
@@ -13,16 +13,16 @@ Initialize a Polygon with counterclockwise vertices.
 ```
 x = [1, 2, 1, 0, 0, -1]  # example x vertices
 y = [-1, 0, 1, 1, 0, -1] # example y vertices
-poly = Polygon(x, y)
+p = Polygon(x, y)
 ```
 
 Initialize a Stripmap; prevertices are automatically computed. Prevertex computation needs to be more thoroughly tested.
 ```
 ends = [1, 4] # example of ends (one-indexed)
-map = Stripmap(poly, ends)
+m = Stripmap(p, ends)
 ```
 
-Compute inverse map *(to be implemented in the near future)*
+Compute inverse map
 ```
 interior_points = ...
 mapped_points = map.evalinv(interior_points)
@@ -31,6 +31,12 @@ mapped_points = map.evalinv(interior_points)
 ## Requirements
 
 Python 3.8+, NumPy, SciPy
+
+## Testing
+
+Testing was done directly against Driscoll's MATLAB Schwarz-Christoffel Toolbox for conformal mapping. 
+Random polygons were generated, and the outputs from this Python package and the MATLAB toolbox were compared.
+See the testing folder for more details. 
 
 ## References 
 
