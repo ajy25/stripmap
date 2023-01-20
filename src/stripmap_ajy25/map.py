@@ -66,9 +66,10 @@ class Polygon:
             np.conjugate(outgoing))) / np.pi, 2)
 
         # check angles sum to appropriate value
-        if np.abs(np.sum(self.alpha) - (self.n - 2)) > np.finfo(float).eps:
-            raise Exception('Invalid polygon. Angles sum to ', \
-                np.sum(self.alpha) + ".")
+        angles_tol = 1.0 * 10 ** (-5)
+        if np.abs(np.sum(self.alpha) - (self.n - 2)) > angles_tol:
+            raise Warning('Invalid polygon. Angles sum to ' + \
+                str(np.sum(self.alpha)) + '.')
         
         # method end
         return
@@ -149,8 +150,8 @@ class Stripmap:
         info_dict = {'vertex': self.p.get_vertices(), 'prevertex': self.z, \
             'alpha': self.p.get_angles(), 'beta': self.beta}
         self.info = pd.DataFrame(data=info_dict)
-        print(self.info)
-        print("c:", self.c)
+        # print(self.info)
+        # print("c:", self.c)
         
         # method end
         return
@@ -240,21 +241,21 @@ class Stripmap:
         '''Returns a copy of ends array.'''
         return copy.copy(self.ends)
 
-if __name__ == '__main__':
-    x_vert = np.array([0, 0.5, 1, 1.5, 2, 0, -1, -1.5, -2, -2])
-    y_vert = np.array([2, 4, 6, 10, 12, 10, 8, 4, 1, 0])
+# if __name__ == '__main__':
+#     x_vert = np.array([0, 0.5, 1, 1.5, 2, 0, -1, -1.5, -2, -2])
+#     y_vert = np.array([2, 4, 6, 10, 12, 10, 8, 4, 1, 0])
 
-    wp_x_vert = np.array([0, -1])
-    wp_y_vert = np.array([6, 2])
-    wp = np.array([6j, -1 + 2j])
+#     wp_x_vert = np.array([0, -1])
+#     wp_y_vert = np.array([6, 2])
+#     wp = np.array([6j, -1 + 2j])
 
-    test_poly =  Polygon(x_vert, y_vert)
+#     test_poly =  Polygon(x_vert, y_vert)
 
-    test_map = Stripmap(test_poly, [1, 6])
-    qdata = test_map.get_qdata()
+#     test_map = Stripmap(test_poly, [1, 6])
+#     qdata = test_map.get_qdata()
 
-    print()
-    print(test_map.evalinv(wp_x_vert, wp_y_vert))
+#     print()
+#     print(test_map.evalinv(wp_x_vert, wp_y_vert))
 
     
 

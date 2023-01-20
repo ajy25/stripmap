@@ -48,7 +48,7 @@ ints(id) = stquad(zleft(id),z1,left(id),zs,beta,qdat);
 ints(id) = ints(id) + stquadh(z1,z2,zeros(size(z1)),zs,beta,qdat);
 ints(id) = ints(id) - stquad(zright(id),z2,right(id),zs,beta,qdat);
 
-absval = abs(ints(~cmplx)); 		% absval(1) = abs(ints(1))
+absval = abs(ints(~cmplx)) 		% absval(1) = abs(ints(1))
 if ~absval(1)
   rat1 = 0
   rat2 = 0

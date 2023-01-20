@@ -4,6 +4,8 @@ import scipy.linalg as la
 import matlab
 import matlab.engine
 import sys, pathlib
+import random
+from polygon_sampling import generate_polygon
 
 # dumb way of adding appropriate paths for testing
 sys.path.append(str(pathlib.Path().resolve()) + '/')
@@ -101,5 +103,64 @@ def test_stderiv():
 
     assert np.abs(dif_norm) < 10 ** (-8)
 
+
+def test_simple_polygons_params():
+    '''Simple tests of the parameter problem on randomly generated n-gons. 
+    In these tests, 6 <= n < 20. We assume that the ends are not too close to 
+    one another; we therefore test with ends of [1, 4], [1, 5], ..., [1, n-2].
+    '''
+    random.seed(2)
+
+    eng = matlab.engine.start_matlab()
+    eng.cd('tests')
+
+    for n in range(6, 20):
+
+        out = generate_polygon(
+            center=(0, 0),
+            avg_radius=5,
+            irregularity=0.8,
+            spikiness=0.5,
+            num_vertices=n)
+
+        x = []
+        y = []
+
+        for tup in out:
+            x.append(tup[0])
+            y.append(tup[1])
+
+        x_matlab = matlab.double(x, is_complex=False)
+        y_matlab = matlab.double(y, is_complex=False)
+
+        test_poly = Polygon(x, y)
+
+        print('\nNew Polygon.')
+        print(n)
+        print(x)
+        print(y)
+        print('')
+
+        for x in range(4, n-1):
+            ends = [1, x]
+            print('Ends: ', ends)
+            ends_matlab = matlab.double(ends, is_complex=False)
+
+            test_map = Stripmap(test_poly, ends)
+
+            matlab_result = eng.paramstester(x_matlab, y_matlab, ends_matlab)
+            matlab_z =  np.transpose(np.array(matlab_result[0]))[0]
+
+            # norm of difference of zs
+            result = test_map.get_z()
+            result[np.isinf(result)] = 0
+
+            matlab_z[np.isinf(matlab_z)] = 0
+
+            dif_norm = la.norm(result - matlab_z)
+
+            print(np.abs(dif_norm))
+            assert np.abs(dif_norm) < 10 ** (-5)
+
 if __name__ == '__main__':
-    test_stderiv()
+    test_simple_polygons_params()

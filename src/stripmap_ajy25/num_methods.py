@@ -158,6 +158,7 @@ def stpfun(y: np.array, n: int, nb: int, beta: np.array, \
         beta, qdata)
 
     absval = np.abs(ints[np.logical_not(cmplx)])
+    print('absval: ', absval)
 
     if absval[0] == 0:
         rat1 = 0
