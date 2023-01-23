@@ -9,6 +9,8 @@
 import math, random
 from typing import List, Tuple
 
+random.seed(2)
+
 
 def generate_polygon(center: Tuple[float, float], avg_radius: float,
                      irregularity: float, spikiness: float,

@@ -17,7 +17,7 @@ cmplx = cmplx(:);
 z = zeros(n,1);
 z(2:nb) = cumsum(exp(y(1:nb-1)));
 z(nb+1:n) = i+cumsum([y(nb);-exp(y(nb+1:n-1))]);
-z
+z;
 
 % Compute the integrals 
 zleft = z(left);
@@ -26,7 +26,7 @@ mid = mean([zleft.' ; zright.']).';
 c2 = cmplx;
 c2(2) = 0;
 mid(c2) = mid(c2) - sign(left(c2)-nb)*i/2;
-mid
+mid;
 
 % Add ends of strip to z, and modify singularity indices
 zs = [-Inf;z(1:nb);Inf;z(nb+1:n)];
@@ -38,7 +38,7 @@ ints = zeros(n-1,1);
 c2(1) = 1;
 id = ~c2;
 ints(id) = stquadh(zleft(id),mid(id),left(id),zs,beta,qdat) - ...
-    stquadh(zright(id),mid(id),right(id),zs,beta,qdat)
+    stquadh(zright(id),mid(id),right(id),zs,beta,qdat);
 
 % For the rest, go to the strip middle, across, and back to the side
 z1 = real(zleft(c2)) + i/2;
@@ -48,13 +48,13 @@ ints(id) = stquad(zleft(id),z1,left(id),zs,beta,qdat);
 ints(id) = ints(id) + stquadh(z1,z2,zeros(size(z1)),zs,beta,qdat);
 ints(id) = ints(id) - stquad(zright(id),z2,right(id),zs,beta,qdat);
 
-absval = abs(ints(~cmplx)) 		% absval(1) = abs(ints(1))
+absval = abs(ints(~cmplx)); 		% absval(1) = abs(ints(1))
 if ~absval(1)
-  rat1 = 0
-  rat2 = 0
+  rat1 = 0;
+  rat2 = 0;
 else
-  rat1 = absval(2:length(absval))/absval(1)
-  rat2 = ints(cmplx)/ints(1)
+  rat1 = absval(2:length(absval))/absval(1);
+  rat2 = ints(cmplx)/ints(1);
 end
 
 if any([rat1;rat2]==0) | any(isnan([rat1;rat2])) | any(isinf([rat1;rat2]))
@@ -65,12 +65,12 @@ end
 % Compute nonlinear equation residual values.
 cmplx2 = cmplx(2:length(cmplx));
 if ~isempty(rat1)
-    F1 = log( rat1 ./ nmlen(~cmplx2) )
+    F1 = log( rat1 ./ nmlen(~cmplx2) );
 else
   F1 = [];
 end
 if ~isempty(rat2)
-  F2 = log( rat2 ./ nmlen(cmplx2) )
+  F2 = log( rat2 ./ nmlen(cmplx2) );
 else
   F2 = [];
 end

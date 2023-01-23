@@ -3,12 +3,12 @@ import numpy as np
 import scipy.linalg as la
 import random
 from scipy.special import gamma
-from scipy.optimize import root
+from scipy.optimize import fsolve, root
 from scipy.integrate import solve_ivp
 
 map_tol = 10 ** (-8)                    # default tolerance
 
-def stparam(map) -> tuple:
+def stparam(map, y_attempt = np.array([])) -> tuple:
     '''Attempts to solve for the parameters of the stripmap.'''
 
     # define necessary local variables
@@ -41,30 +41,35 @@ def stparam(map) -> tuple:
     w = np.delete(w, [0, k-1])
     atinf = np.delete(atinf, [0, k-1])
 
-    # make an initial guess for z0
-    z0 = np.zeros(n, dtype='complex_')
-
-    if np.any(atinf):
-        raise Exception('Polygon is assumed to be bounded.')
-
-    scale = (np.abs(w[n-1] - w[0]) + np.abs(w[nb-1] - w[nb])) / 2
-
-    z0[0:nb] = np.cumsum(np.abs(np.insert(w[1:nb] - w[0:(nb-1)], 0, 0))\
-        / scale)
-    
-    if (nb + 1) == n:
-        z0[n-1] = np.mean([z0[0], z0[nb-1]])
+    if len(y_attempt) != 0:
+        y0 = y_attempt
     else:
-        z0[nb:n] = np.flip(np.cumsum(np.abs(np.insert(np.flip(\
-            w[(nb+1):n]) - np.flip(w[nb:(n-1)]), 0, 0)) / scale))
+        # make an initial guess for z0
+        z0 = np.zeros(n, dtype='complex_')
 
-    scale = np.sqrt(z0[nb-1] / z0[nb])
+        if np.any(atinf):
+            raise Exception('Polygon is assumed to be bounded.')
 
-    z0[0:nb] = np.divide(z0[0:nb], scale)
-    z0[nb:n] = 1j + np.multiply(z0[nb:n], scale)
+        scale = (np.abs(w[n-1] - w[0]) + np.abs(w[nb-1] - w[nb])) / 2
 
-    y0 = np.hstack([np.log(np.diff(z0[0:nb])), np.real(z0[nb]), \
-        np.log(-np.diff(z0[nb:n]))])
+        z0[0:nb] = np.cumsum(np.abs(np.insert(w[1:nb] - w[0:(nb-1)], 0, 0))\
+            / scale)
+        
+        if (nb + 1) == n:
+            z0[n-1] = np.mean([z0[0], z0[nb-1]])
+        else:
+            z0[nb:n] = np.flip(np.cumsum(np.abs(np.insert(np.flip(\
+                w[(nb+1):n]) - np.flip(w[nb:(n-1)]), 0, 0)) / scale))
+
+        scale = np.sqrt(z0[nb-1] / z0[nb])
+
+        z0[0:nb] = np.divide(z0[0:nb], scale)
+        z0[nb:n] = 1j + np.multiply(z0[nb:n], scale)
+
+        y0 = np.hstack([np.log(np.diff(z0[0:nb])), np.real(z0[nb]), \
+            np.log(-np.diff(z0[nb:n]))])
+
+    print('y0:', y0)
 
     # find prevertices
     # left and right are zero-indexed
@@ -83,9 +88,12 @@ def stparam(map) -> tuple:
     nmlen[np.logical_not(cmplx)] = np.abs(nmlen[np.logical_not(cmplx)])
     nmlen = np.delete(nmlen, 0)
 
-    y = root(stpfun, np.real(y0), (n, nb, beta, nmlen, left, \
-        right, cmplx, qdata), tol=map_tol).x
+
+    y = iterate_solvers(y0, n, nb, beta, nmlen, left, \
+        right, cmplx, qdata, skip=[])
     
+    print(y)
+
     z = np.zeros(n, dtype='complex_')
     z[1:nb] = np.cumsum(np.exp(y[0:(nb-1)]))
     z[nb:] = np.add(np.cumsum(np.hstack([np.array([y[nb-1]]), \
@@ -101,7 +109,7 @@ def stparam(map) -> tuple:
         np.array([1]), z, beta, qdata)
 
     if len(g) != 1:
-        raise Exception('The length of g was not 1.')
+        raise ValueError('The length of g was not 1.')
 
     c = np.divide(w[0] - w[1], g[0])
 
@@ -112,10 +120,14 @@ def stparam(map) -> tuple:
     # method return
     return z, c, qdata
 
+
 def stpfun(y: np.array, n: int, nb: int, beta: np.array, \
     nmlen: np.array, left: np.array, right: np.array, cmplx: np.array, \
     qdata: np.array) -> np.array:
     '''Function that maps from vector to vector, used by fsolve.'''
+    # print('')
+    # print(y.tolist())
+    # print('')
 
     z = np.zeros(n, dtype='complex_')
     z[1:nb] = np.cumsum(np.exp(y[0:(nb-1)]))
@@ -150,6 +162,7 @@ def stpfun(y: np.array, n: int, nb: int, beta: np.array, \
     id = np.logical_not(id)
 
     ints[id] = stquad(zleft[id], z1, left[id], zs, beta, qdata)
+    
 
     ints[id] = ints[id] + stquadh(z1, z2, np.zeros(len(z1)), zs, \
         beta, qdata)
@@ -158,20 +171,26 @@ def stpfun(y: np.array, n: int, nb: int, beta: np.array, \
         beta, qdata)
 
     absval = np.abs(ints[np.logical_not(cmplx)])
-    print('absval: ', absval)
 
     if absval[0] == 0:
-        rat1 = 0
-        rat2 = 0
+        rat1 = np.array([0])
+        rat2 = np.array([0])
     else:
-        rat1 = np.divide(absval[1:], absval[0])
-        rat2 = np.divide(ints[cmplx], ints[0])
+        if len(absval) == 2:
+            rat1 = np.array([absval[1] / absval[0]])
+        else:
+            rat1 = np.divide(absval[1:], absval[0])
+
+        if len(ints[cmplx]) == 1:
+            rat2 = np.array(ints[cmplx] / ints[0])
+        else:
+            rat2 = np.divide(ints[cmplx], ints[0])
 
     rat_test = np.hstack([rat1, rat2])
     
     if 0 in rat_test or np.any(np.isinf(rat_test)) or \
         np.any(np.isnan(rat_test)):
-        print('WARNING: SEVERE CROWDING')
+        raise RuntimeWarning('WARNING: SEVERE CROWDING')
     
     cmplx2 = cmplx[1:]
 
@@ -185,9 +204,251 @@ def stpfun(y: np.array, n: int, nb: int, beta: np.array, \
     else:
         F2 = np.array([])
 
-    # print(np.real(np.hstack([F1, np.real(F2), np.imag(F2)])))
+    print(np.real(np.hstack([F1, np.real(F2), np.imag(F2)])))
     # return np.real(np.hstack([F1, np.real(F2), np.imag(F2)]))
     return np.real(np.hstack([F1, np.real(F2), np.imag(F2)]))
+
+def iterate_solvers(y0, n, nb, beta, nmlen, left, right, cmplx, qdata, \
+    skip: list[str] = []):
+
+    max_step = 1000 * max(la.norm(np.real(y0)), 1)
+    xtol = 10 ** (-8) / 10
+
+    try: 
+        y, idct, ier, mesg = fsolve(stpfun, np.real(y0), (n, nb, beta, nmlen, \
+            left, right, cmplx, qdata), maxfev=100*(n+1), full_output=True)
+        if ier == 1:
+            return y
+    except:
+        print('WARNING: fsolve did not terminate properly. ' + \
+            'Will iterate through other root finder methods.')
+    
+    if 'fsolve_iter_factor' not in skip:
+        # fsolve
+        method = 'fsolve_iter_factor'
+        factor = 0.1
+        while factor <= 100:
+            for i in range(5):
+                randiag = np.random.random(n) + 0.5
+                try:
+                    y, idct, ier, mesg = \
+                        fsolve(stpfun, np.real(y0), (n, nb, beta, nmlen, left, \
+                        right, cmplx, qdata), maxfev=100*(n+1), factor=factor, \
+                        xtol=xtol, full_output=True, diag=randiag)
+                    if ier == 1:
+                        print('Method ' + method + ' was successful.')
+                        if not verify_root(y, n, nb, beta, nmlen, left, right, \
+                            cmplx, qdata):
+                            skip.append(method)
+                            return iterate_solvers(y, n, nb, beta, nmlen, left,\
+                                right, cmplx, qdata, skip)
+                        else:
+                            return y
+                except:
+                    factor = min(factor * 2, factor + 10)
+        print('Method ' + method + ' unsuccessful.\n')
+
+    if 'lm' not in skip:
+        # lm
+        method = 'lm'
+        factor = 0.1
+        while factor <= 100:
+            try:
+                options = {
+                    'factor': factor,
+                    'maxiter': 100 * (n+1),
+                    'xtol': xtol
+                }
+
+                y = root(stpfun, np.real(y0), (n, nb, beta, nmlen, left, right, \
+                    cmplx, qdata), method=method, options=options).x
+                print('Method ' + method + ' was successful.')
+                if not verify_root(y, n, nb, beta, nmlen, left, right, cmplx, \
+                    qdata):
+                    skip.append(method)
+                    return iterate_solvers(y, n, nb, beta, nmlen, left, right, \
+                        cmplx, qdata, skip)
+                else:
+                    return y
+            except:
+                factor = min(factor * 2, factor + 5)
+        print('Method ' + method + ' unsuccessful.\n')
+
+    if 'hybr' not in skip:
+        # hybr
+        method = 'hybr'
+        factor = 0.1
+        while factor <= 100:
+            try:
+                options = {
+                    'maxfev': 10 * (n+1),
+                    'factor': factor,
+                    'xtol': xtol
+                }
+
+                y = root(stpfun, np.real(y0), (n, nb, beta, nmlen, left, right, 
+                cmplx, qdata), method=method, options=options).x
+                print('Method ' + method + ' was successful.')
+                if not verify_root(y, n, nb, beta, nmlen, left, right, cmplx, \
+                    qdata):
+                    skip.append(method)
+                    return iterate_solvers(y, n, nb, beta, nmlen, left, \
+                            right, cmplx, qdata, skip)
+                else:
+                    return y
+            except:
+                factor = min(factor * 2, factor + 10)
+        print('Method ' + method + ' unsuccessful.\n')
+
+    if 'broyden1' not in skip:
+        # broyden1
+        method = 'broyden1'
+        factor = 0.1
+        for linesearch in ['armijo', 'wolfe']:
+            try:
+                options = {
+                    'maxiter': 10 * (n+1),
+                    'xtol': xtol,
+                    'ftol': xtol * 10,
+                    'line_search': linesearch
+                }
+
+                y = root(stpfun, np.real(y0), (n, nb, beta, nmlen, left, right, \
+                    cmplx, qdata), method=method, options=options).x
+                print('Method ' + method + ' was successful.')
+                if not verify_root(y, n, nb, beta, nmlen, left, right, cmplx, \
+                    qdata):
+                    skip.append(method)
+                    return iterate_solvers(y, n, nb, beta, nmlen, left, right, \
+                        cmplx, qdata, skip)
+                else:
+                    return y
+            except:
+                pass
+        print('Method ' + method + ' unsuccessful.\n')
+
+    if 'broyden2' not in skip:
+        # broyden2
+        method = 'broyden2'
+        factor = 0.1
+        for linesearch in ['armijo', 'wolfe']:
+            try:
+                options = {
+                    'maxiter': 10 * (n+1),
+                    'xtol': xtol,
+                    'ftol': xtol * 10,
+                    'line_search': linesearch
+                }
+
+                y = root(stpfun, np.real(y0), (n, nb, beta, nmlen, left, right, \
+                    cmplx, qdata), method=method, options=options).x
+                print('Method ' + method + ' was successful.')
+                if not verify_root(y, n, nb, beta, nmlen, left, right, cmplx, \
+                    qdata):
+                    skip.append(method)
+                    return iterate_solvers(y, n, nb, beta, nmlen, left, right, \
+                        cmplx, qdata, skip)
+                else:
+                    return y
+            except:
+                pass
+        print('Method ' + method + ' unsuccessful.\n')
+
+    if 'df-sane' not in skip:
+        # df-sane
+        method = 'df-sane'
+        factor = 0.1
+        for linesearch in ['cruz', 'cheng']:
+            try:
+                options = {
+                    'maxfev': 10 * (n+1),
+                    'xtol': xtol,
+                    'ftol': xtol * 10,
+                    'line_search': linesearch
+                }
+
+                y = root(stpfun, np.real(y0), (n, nb, beta, nmlen, left, right, \
+                    cmplx, qdata), method=method, options=options).x
+                print('Method ' + method + ' was successful.')
+                if not verify_root(y, n, nb, beta, nmlen, left, right, cmplx, \
+                    qdata):
+                    skip.append(method)
+                    return iterate_solvers(y, n, nb, beta, nmlen, left, right, \
+                        cmplx, qdata, skip)
+                else:
+                    return y
+            except:
+                pass
+        print('Method ' + method + ' unsuccessful.\n')
+
+    if 'krylov' not in skip:
+        # krylov
+        method = 'krylov'
+        factor = 0.1
+        for linesearch in ['armijo', 'wolfe']:
+            try:
+                options = {
+                    'maxiter': 10 * (n+1),
+                    'xtol': xtol,
+                    'ftol': xtol * 10,
+                    'line_search': linesearch
+                }
+
+                y = root(stpfun, np.real(y0), (n, nb, beta, nmlen, left, right, \
+                    cmplx, qdata), method=method, options=options).x
+                print('Method ' + method + ' was successful.')
+                if not verify_root(y, n, nb, beta, nmlen, left, right, cmplx, \
+                    qdata):
+                    skip.append(method)
+                    return iterate_solvers(y, n, nb, beta, nmlen, left, right, \
+                        cmplx, qdata, skip)
+                else:
+                    return y
+            except:
+                pass
+        print('Method ' + method + ' unsuccessful.\n')
+    
+    if 'excitingmixing' not in skip:
+        # excitingmixing
+        method = 'excitingmixing'
+        factor = 0.1
+        for linesearch in ['armijo', 'wolfe']:
+            try:
+                options = {
+                    'maxiter': 10 * (n+1),
+                    'xtol': xtol,
+                    'ftol': xtol * 10,
+                    'line_search': linesearch
+                }
+
+                y = root(stpfun, np.real(y0), (n, nb, beta, nmlen, left, right, \
+                    cmplx, qdata), method=method, options=options).x
+                print('Method ' + method + ' was successful.')
+                if not verify_root(y, n, nb, beta, nmlen, left, right, cmplx, \
+                    qdata):
+                    skip.append(method)
+                    return iterate_solvers(y, n, nb, beta, nmlen, left, right, \
+                        cmplx, qdata, skip)
+                else:
+                    return y
+            except:
+                pass
+        print('Method ' + method + ' unsuccessful.\n')
+
+    raise ValueError('All methods unsuccessful.')
+
+def verify_root(y, n, nb, beta, nmlen, left, right, cmplx, qdata) -> bool:
+    '''Returns true if the root is accurate enough. False otherwise.
+    '''
+    zero = stpfun(y, n, nb, beta, nmlen, left, right, cmplx, qdata)
+
+    zero = zero / la.norm(zero)
+    print('expected_zeros_sum', np.sum(np.abs(zero)))
+
+    if np.sum(np.abs(zero)) > 10 ** (-5):
+        return False
+    else:
+        return True
 
 def stderiv(zp: np.array, z: np.array, beta: np.array, c: float = 1, \
     j: float = -1) -> np.array:

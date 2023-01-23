@@ -1,11 +1,8 @@
 import numpy as np
+import scipy.optimize
 
-x = np.array([0, 0, 1])
+x = np.array([1, 2, 3, 4])
 
+idx = [True, False, True, False]
 
-print(np.nonzero(x))
-y = np.array([1, 2])
-
-
-
-print(np.array([[1], [2]])[0])
+print(x[idx])

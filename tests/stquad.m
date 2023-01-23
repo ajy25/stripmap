@@ -63,6 +63,6 @@ for k = nontriv
     end
   end
 
-  I
+  I;
 end
 
