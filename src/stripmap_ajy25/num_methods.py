@@ -204,24 +204,31 @@ def stpfun(y: np.array, n: int, nb: int, beta: np.array, \
     else:
         F2 = np.array([])
 
-    print(np.real(np.hstack([F1, np.real(F2), np.imag(F2)])))
+    # print(np.real(np.hstack([F1, np.real(F2), np.imag(F2)])))
     # return np.real(np.hstack([F1, np.real(F2), np.imag(F2)]))
     return np.real(np.hstack([F1, np.real(F2), np.imag(F2)]))
 
 def iterate_solvers(y0, n, nb, beta, nmlen, left, right, cmplx, qdata, \
-    skip: list[str] = []):
+    skip: list[str] = [], rec_depth: int = 0):
 
-    max_step = 1000 * max(la.norm(np.real(y0)), 1)
+    print('rec_depth: ', rec_depth)
+
+    if rec_depth == 20:
+        return None
+        
+
+    # max_step = 1000 * max(la.norm(np.real(y0)), 1)
     xtol = 10 ** (-8) / 10
 
     try: 
-        y, idct, ier, mesg = fsolve(stpfun, np.real(y0), (n, nb, beta, nmlen, \
+        y, idct, ierf, mesg = fsolve(stpfun, np.real(y0), (n, nb, beta, nmlen, \
             left, right, cmplx, qdata), maxfev=100*(n+1), full_output=True)
-        if ier == 1:
+        if ierf == 1:
+            verify_root(y, n, nb, beta, nmlen, left, right, cmplx, \
+                qdata)
             return y
     except:
-        print('WARNING: fsolve did not terminate properly. ' + \
-            'Will iterate through other root finder methods.')
+        pass
     
     if 'fsolve_iter_factor' not in skip:
         # fsolve
@@ -229,23 +236,25 @@ def iterate_solvers(y0, n, nb, beta, nmlen, left, right, cmplx, qdata, \
         factor = 0.1
         while factor <= 100:
             for i in range(5):
-                randiag = np.random.random(n) + 0.5
+                randdiag = np.random.rand(n) * 2
                 try:
                     y, idct, ier, mesg = \
                         fsolve(stpfun, np.real(y0), (n, nb, beta, nmlen, left, \
                         right, cmplx, qdata), maxfev=100*(n+1), factor=factor, \
-                        xtol=xtol, full_output=True, diag=randiag)
+                        xtol=xtol, full_output=True, diag=randdiag)
                     if ier == 1:
                         print('Method ' + method + ' was successful.')
                         if not verify_root(y, n, nb, beta, nmlen, left, right, \
                             cmplx, qdata):
                             skip.append(method)
+                            rec_depth += 1
                             return iterate_solvers(y, n, nb, beta, nmlen, left,\
-                                right, cmplx, qdata, skip)
+                                right, cmplx, qdata, skip, rec_depth)
                         else:
                             return y
                 except:
-                    factor = min(factor * 2, factor + 10)
+                    pass
+            factor = min(factor * 2, factor + 5)
         print('Method ' + method + ' unsuccessful.\n')
 
     if 'lm' not in skip:
@@ -266,39 +275,15 @@ def iterate_solvers(y0, n, nb, beta, nmlen, left, right, cmplx, qdata, \
                 if not verify_root(y, n, nb, beta, nmlen, left, right, cmplx, \
                     qdata):
                     skip.append(method)
-                    return iterate_solvers(y, n, nb, beta, nmlen, left, right, \
-                        cmplx, qdata, skip)
+                    rec_depth += 1
+                    return iterate_solvers(y, n, nb, beta, nmlen, left,\
+                        right, cmplx, qdata, skip, rec_depth)
                 else:
                     return y
             except:
                 factor = min(factor * 2, factor + 5)
         print('Method ' + method + ' unsuccessful.\n')
 
-    if 'hybr' not in skip:
-        # hybr
-        method = 'hybr'
-        factor = 0.1
-        while factor <= 100:
-            try:
-                options = {
-                    'maxfev': 10 * (n+1),
-                    'factor': factor,
-                    'xtol': xtol
-                }
-
-                y = root(stpfun, np.real(y0), (n, nb, beta, nmlen, left, right, 
-                cmplx, qdata), method=method, options=options).x
-                print('Method ' + method + ' was successful.')
-                if not verify_root(y, n, nb, beta, nmlen, left, right, cmplx, \
-                    qdata):
-                    skip.append(method)
-                    return iterate_solvers(y, n, nb, beta, nmlen, left, \
-                            right, cmplx, qdata, skip)
-                else:
-                    return y
-            except:
-                factor = min(factor * 2, factor + 10)
-        print('Method ' + method + ' unsuccessful.\n')
 
     if 'broyden1' not in skip:
         # broyden1
@@ -319,8 +304,9 @@ def iterate_solvers(y0, n, nb, beta, nmlen, left, right, cmplx, qdata, \
                 if not verify_root(y, n, nb, beta, nmlen, left, right, cmplx, \
                     qdata):
                     skip.append(method)
-                    return iterate_solvers(y, n, nb, beta, nmlen, left, right, \
-                        cmplx, qdata, skip)
+                    rec_depth += 1
+                    return iterate_solvers(y, n, nb, beta, nmlen, left,\
+                        right, cmplx, qdata, skip, rec_depth)
                 else:
                     return y
             except:
@@ -346,8 +332,9 @@ def iterate_solvers(y0, n, nb, beta, nmlen, left, right, cmplx, qdata, \
                 if not verify_root(y, n, nb, beta, nmlen, left, right, cmplx, \
                     qdata):
                     skip.append(method)
-                    return iterate_solvers(y, n, nb, beta, nmlen, left, right, \
-                        cmplx, qdata, skip)
+                    rec_depth += 1
+                    return iterate_solvers(y, n, nb, beta, nmlen, left,\
+                        right, cmplx, qdata, skip, rec_depth)
                 else:
                     return y
             except:
@@ -373,8 +360,9 @@ def iterate_solvers(y0, n, nb, beta, nmlen, left, right, cmplx, qdata, \
                 if not verify_root(y, n, nb, beta, nmlen, left, right, cmplx, \
                     qdata):
                     skip.append(method)
-                    return iterate_solvers(y, n, nb, beta, nmlen, left, right, \
-                        cmplx, qdata, skip)
+                    rec_depth += 1
+                    return iterate_solvers(y, n, nb, beta, nmlen, left,\
+                        right, cmplx, qdata, skip, rec_depth)
                 else:
                     return y
             except:
@@ -400,8 +388,9 @@ def iterate_solvers(y0, n, nb, beta, nmlen, left, right, cmplx, qdata, \
                 if not verify_root(y, n, nb, beta, nmlen, left, right, cmplx, \
                     qdata):
                     skip.append(method)
-                    return iterate_solvers(y, n, nb, beta, nmlen, left, right, \
-                        cmplx, qdata, skip)
+                    rec_depth += 1
+                    return iterate_solvers(y, n, nb, beta, nmlen, left,\
+                        right, cmplx, qdata, skip, rec_depth)
                 else:
                     return y
             except:
@@ -427,12 +416,40 @@ def iterate_solvers(y0, n, nb, beta, nmlen, left, right, cmplx, qdata, \
                 if not verify_root(y, n, nb, beta, nmlen, left, right, cmplx, \
                     qdata):
                     skip.append(method)
-                    return iterate_solvers(y, n, nb, beta, nmlen, left, right, \
-                        cmplx, qdata, skip)
+                    rec_depth += 1
+                    return iterate_solvers(y, n, nb, beta, nmlen, left,\
+                        right, cmplx, qdata, skip, rec_depth)
                 else:
                     return y
             except:
                 pass
+        print('Method ' + method + ' unsuccessful.\n')
+
+    if 'hybr' not in skip:
+        # hybr
+        method = 'hybr'
+        factor = 0.1
+        while factor <= 100:
+            try:
+                options = {
+                    'maxfev': 10 * (n+1),
+                    'factor': factor,
+                    'xtol': xtol
+                }
+
+                y = root(stpfun, np.real(y0), (n, nb, beta, nmlen, left, right, 
+                cmplx, qdata), method=method, options=options).x
+                print('Method ' + method + ' was successful.')
+                if not verify_root(y, n, nb, beta, nmlen, left, right, cmplx, \
+                    qdata):
+                    skip.append(method)
+                    rec_depth += 1
+                    return iterate_solvers(y, n, nb, beta, nmlen, left,\
+                        right, cmplx, qdata, skip, rec_depth)
+                else:
+                    return y
+            except:
+                factor = min(factor * 2, factor + 10)
         print('Method ' + method + ' unsuccessful.\n')
 
     raise ValueError('All methods unsuccessful.')
@@ -443,6 +460,7 @@ def verify_root(y, n, nb, beta, nmlen, left, right, cmplx, qdata) -> bool:
     zero = stpfun(y, n, nb, beta, nmlen, left, right, cmplx, qdata)
 
     zero = zero / la.norm(zero)
+    print('expected_zeros', np.abs(zero))
     print('expected_zeros_sum', np.sum(np.abs(zero)))
 
     if np.sum(np.abs(zero)) > 10 ** (-5):

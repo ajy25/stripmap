@@ -23,7 +23,6 @@ from src.stripmap_ajy25.num_methods import stpfun, stderiv, scqdata, \
 eng = matlab.engine.start_matlab()
 eng.cd('tests')
 
- 
 
 def test_stpfun():
     '''Simple test of stpfun, a cruicial function in solving
@@ -115,7 +114,6 @@ def test_simple_polygons_params():
     In these tests, 6 <= n < 20. We assume that the ends are not too close to 
     one another; we therefore test with ends of [1, 4], [1, 5], ..., [1, n-2].
     '''
-    random.seed(2)
 
     for n in range(6, 20):
 
@@ -123,7 +121,7 @@ def test_simple_polygons_params():
             center=(0, 0),
             avg_radius=5,
             irregularity=0.8,
-            spikiness=0.5,
+            spikiness=0.3,
             num_vertices=n)
 
         x = []
@@ -160,7 +158,7 @@ def test_simple_polygons_params():
             print('\nResults')
             print('matlab z: ', matlab_z)
             print('python z: ', result)
-            # test_one_stparam(x, y, ends)
+            test_one_stparam(x, y, ends)
             
 
             # norm of difference of zs
@@ -264,7 +262,7 @@ def test_one_stpfun(x_vert, y_vert, ends, y, type='python'):
     #         right, cmplx, qdata))
 
     if type == 'python':
-        print('stpfun result: ', \
+        print('python stpfun result: ', \
             stpfun(y, n,nb,beta,nmlen,left,right,cmplx,qdata))
 
     left = left + 1
@@ -283,7 +281,7 @@ def test_one_stpfun(x_vert, y_vert, ends, y, type='python'):
     if type == 'matlab':
         result = eng.stpfun(y,n,nb,beta,nmlen,left,right,cmplx,qdata)
         result = np.transpose(np.array(result))[0]
-        print('stpfun result: ', result)
+        print('matlab stpfun result: ', result)
 
 
 def test_one_stparam(x_vert, y_vert, ends):
@@ -299,7 +297,7 @@ def test_one_stparam(x_vert, y_vert, ends):
 
     try:
         y_python = fsolve(stpfun, np.real(y0), (n, nb, beta, nmlen, left, \
-            right, cmplx, qdata), maxfev=100*(n+1), )
+            right, cmplx, qdata), maxfev=100*(n+1))
     except:
         print('\nWARNING: fsolve did not converge with default options.')
         print('Now iterating through root finding methods.\n')
@@ -323,7 +321,8 @@ if __name__ == '__main__':
     #     x_vert=[1.2507682826028579, 2.106123801943506, 0.0, 5.306749116636828, 0.4568448660952736, -0.42450069430131426, -9.940285128646508, -5.602465497232643],
     #     y_vert=[-4.133988646478907, -3.9396975775363514, 0.0, -0.7324962546473224, 0.38798328575872865, 0.5928871473628481, -1.0912064704761821, -3.175803772505633],
     #     ends=[1, 4],
-    #     y=[0.9128, 3.5780, 0.2729, -0.1685, -4.8275]
+    #     y=[-0.369731026873274, 0.837574349940095, 0.689805545132284, \
+    #         4.995003117915958, -0.436650206209115, ]
     # )
 
     # test_one_stparam(
@@ -331,6 +330,6 @@ if __name__ == '__main__':
     #     y_vert=[1.7354629051920187, 4.128009422251863, 3.79281856434809, -0.6666587952340712, -7.257622034512454, -2.486510588547469, -0.8157083895934295],
     #     ends=[1, 4]
     # )
-
+    random.seed(9)
     test_simple_polygons_params()
     
