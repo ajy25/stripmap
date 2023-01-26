@@ -69,7 +69,7 @@ def stparam(map, y_attempt = np.array([])) -> tuple:
         y0 = np.hstack([np.log(np.diff(z0[0:nb])), np.real(z0[nb]), \
             np.log(-np.diff(z0[nb:n]))])
 
-    print('y0:', y0)
+    # print('y0:', y0)
 
     # find prevertices
     # left and right are zero-indexed
@@ -92,7 +92,7 @@ def stparam(map, y_attempt = np.array([])) -> tuple:
     y = iterate_solvers(y0, n, nb, beta, nmlen, left, \
         right, cmplx, qdata, skip=[])
     
-    print(y)
+    # print(y)
 
     z = np.zeros(n, dtype='complex_')
     z[1:nb] = np.cumsum(np.exp(y[0:(nb-1)]))
@@ -211,7 +211,8 @@ def stpfun(y: np.array, n: int, nb: int, beta: np.array, \
 def iterate_solvers(y0, n, nb, beta, nmlen, left, right, cmplx, qdata, \
     skip: list[str] = [], rec_depth: int = 0):
 
-    print('rec_depth: ', rec_depth)
+    print('begin param solve')
+    print('recursion depth: ', rec_depth)
 
     if rec_depth == 20:
         return None
@@ -460,8 +461,8 @@ def verify_root(y, n, nb, beta, nmlen, left, right, cmplx, qdata) -> bool:
     zero = stpfun(y, n, nb, beta, nmlen, left, right, cmplx, qdata)
 
     zero = zero / la.norm(zero)
-    print('expected_zeros', np.abs(zero))
-    print('expected_zeros_sum', np.sum(np.abs(zero)))
+    # print('expected_zeros', np.abs(zero))
+    # print('expected_zeros_sum', np.sum(np.abs(zero)))
 
     if np.sum(np.abs(zero)) > 10 ** (-5):
         return False
@@ -937,17 +938,16 @@ def findz0(wp: np.array, map, qdata: np.array) -> tuple:
         
         else:
             not_done = np.logical_not(done)
-            
-            print(not_done)
-
             idx[not_done] = np.remainder(idx[not_done], n) + 1
         
+        # print(idx)
+
         not_done = np.logical_not(done)
         w0[not_done] = wbase[idx[not_done]]
         z0[not_done] = zbase[idx[not_done]]
 
         for i in range(n):
-            
+            # print(idx == i)
             active = np.logical_and(idx == i, not_done)
 
             if np.any(active):
@@ -957,32 +957,35 @@ def findz0(wp: np.array, map, qdata: np.array) -> tuple:
                     if k == i:
                         continue
                     A = np.array([np.real(direcn[k]), np.imag(direcn[k])])
-                    findactive = np.nonzero(active)
+                    findactive = np.nonzero(active)[0]
+                    # print(findactive)
                     for p in findactive:
                         dif = w0[p] - wp[p]
-
+                        # print(dif)
                         temp_A_add = np.array([np.real(dif), np.imag(dif)])
                         temp_A_add = np.reshape(temp_A_add, np.shape(A))
 
                         # print('A', A)
                         # print('B', temp_A_add)
 
-                        A = np.vstack((A, temp_A_add))
-                        A = np.transpose(A)
-                        rcondA = 1 / np.linalg.cond(A)
+                        A_new = np.vstack((A, temp_A_add))
+                        A_new = np.transpose(A_new)
+                        # print(A_new)
+                        rcondA = 1 / np.linalg.cond(A_new)
 
-                        if rcondA > eps:
+                        if rcondA < eps:
                             wpx = np.real((wp[p] - anchor[k]) / direcn[k])
                             w0x = np.real((w0[p] - anchor[k]) / direcn[k])
 
                             if (wpx * w0x < 0) or \
                                 ((wpx - ln[k]) * (w0x - ln[k]) < 0):
+                                # print('line 980')
                                 done[p] = 0
                             
                         else:
                             dif = w0[p] - anchor[k]
                             b = np.array([[np.real(dif)], [np.imag(dif)]])
-                            s = la.solve(A, b)
+                            s = la.solve(A_new, b)
 
                             if s[0] >= 0 and s[0] <= ln[k]:
                                 if np.abs(s[1] - 1) < tol:
@@ -992,7 +995,9 @@ def findz0(wp: np.array, map, qdata: np.array) -> tuple:
                                     if np.real(np.conj(\
                                         wp[p] - w0[p]) * 1j * direcn[k]) > 0:
                                         done[p] = 0
+                                        # print('line 995')
                                 elif s[1] > 0 and s[1] < 1:
+                                    # print('line 998')
                                     done[p] = 0
             
                 m = sum(np.logical_not(done))

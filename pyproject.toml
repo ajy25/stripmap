@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "stripmap"
+name = "stripmap_ajy25"
 version = "0.0.1"
 authors = [
   { name="Andrew J Yang", email="andrew_j_yang@brown.edu" },

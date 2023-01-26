@@ -310,26 +310,110 @@ def test_one_stparam(x_vert, y_vert, ends):
     test_one_stpfun(x_vert, y_vert, ends, y_matlab, 'matlab')
     test_one_stpfun(x_vert, y_vert, ends, y_python, 'python')
 
-def compute_root_error(zero):
-    n = len(zero)
-    compare = np.zeros(n)
 
-    return la.norm(zero - compare) / la.norm(compare) 
+def rand_points_in_poly(x_vert, y_vert, radius, n) -> tuple:
+
+    from shapely.geometry import Point as ShapelyPoint
+    from shapely.geometry.polygon import Polygon as ShapelyPoly
+
+    vect = []
+
+    for i in range(len(x_vert)):
+        tup = (x_vert[i], y_vert[i])
+        vect.append(tup)
+
+    poly = ShapelyPoly(vect)
+
+    out_x = []
+    out_y = []
+
+    while len(out_x) != n:
+        test_x = 0.5 - random.random() * 3
+        test_y = 0.5 - random.random() * 3
+        point = ShapelyPoint(test_x, test_y)
+        if poly.contains(point):
+            out_x.append(test_x)
+            out_y.append(test_y)
+    
+    return out_x, out_y
+
+def test_evalinv():
+    for n in range(6, 20):
+
+        out = generate_polygon(
+            center=(0, 0),
+            avg_radius=5,
+            irregularity=0.8,
+            spikiness=0.3,
+            num_vertices=n)
+
+        x = []
+        y = []
+
+        for tup in out:
+            x.append(tup[0])
+            y.append(tup[1])
+
+        x_matlab = matlab.double(x, is_complex=False)
+        y_matlab = matlab.double(y, is_complex=False)
+
+        test_poly = Polygon(x, y)
+
+        print('\nNew Polygon.')
+        print(n)
+        print(x)
+        print(y)
+        print('')
+
+        for j in range(4, n-1):
+            ends = [1, j]
+            print('\nNEXT ENDS: ' + str(ends) + '\t' + str(n) + '-gon:')
+            print(x)
+            print(y)
+            ends_matlab = matlab.double(ends, is_complex=False)
+
+            matlab_result = eng.paramstester(x_matlab, y_matlab, ends_matlab)
+            matlab_result =  np.transpose(np.array(matlab_result[0]))[0]
+
+            test_map = Stripmap(test_poly, ends)
+            result = test_map.get_z()
+
+            print('\nResults')
+            print('matlab z: ', matlab_result)
+            print('python z: ', result)
+            test_one_stparam(x, y, ends)
+            
+
+            # norm of difference of zs
+            result[np.isinf(result)] = 0
+
+            matlab_result[np.isinf(matlab_result)] = 0
+
+            dif_norm = la.norm(result - matlab_result) / la.norm(matlab_result)
+
+            print(np.abs(dif_norm))
+            assert np.abs(dif_norm) < 10 ** (-5)
+
+            # evalinv
+            x_evalinv, y_evalinv = rand_points_in_poly(x, y, 5, 10)
+            x_evalinv_matlab = matlab.double(x_evalinv, is_complex=False)
+            y_evalinv_matlab = matlab.double(y_evalinv, is_complex=False)
+
+
+            matlab_result = eng.evalinvtester(x_matlab, y_matlab, \
+                ends_matlab, x_evalinv_matlab, y_evalinv_matlab)
+            matlab_result =  np.array(matlab_result)
+
+            result = test_map.evalinv(x_evalinv, y_evalinv)
+            
+            print('matlab inverse: ', matlab_result)
+            print('python inverse: ', result)
+
+            dif_norm = la.norm(result - matlab_result) / la.norm(matlab_result)
+            print(np.abs(dif_norm))
+            assert np.abs(dif_norm) < 10 ** (-5)
+
 
 if __name__ == '__main__':
-    # test_one_stpfun(
-    #     x_vert=[1.2507682826028579, 2.106123801943506, 0.0, 5.306749116636828, 0.4568448660952736, -0.42450069430131426, -9.940285128646508, -5.602465497232643],
-    #     y_vert=[-4.133988646478907, -3.9396975775363514, 0.0, -0.7324962546473224, 0.38798328575872865, 0.5928871473628481, -1.0912064704761821, -3.175803772505633],
-    #     ends=[1, 4],
-    #     y=[-0.369731026873274, 0.837574349940095, 0.689805545132284, \
-    #         4.995003117915958, -0.436650206209115, ]
-    # )
-
-    # test_one_stparam(
-    #     x_vert=[7.55757022021153, 3.6037204096674387, -1.2080076076960657, -7.190979426784731, -1.3087735960750977, 1.8176840263958098, 3.193598439203918],
-    #     y_vert=[1.7354629051920187, 4.128009422251863, 3.79281856434809, -0.6666587952340712, -7.257622034512454, -2.486510588547469, -0.8157083895934295],
-    #     ends=[1, 4]
-    # )
     random.seed(9)
-    test_simple_polygons_params()
-    
+    test_evalinv()

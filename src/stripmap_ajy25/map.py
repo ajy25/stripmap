@@ -6,15 +6,6 @@ import copy
 from num_methods import stparam, stmap, stinvmap, findz0, stderiv
 
 class Polygon:
-    '''
-    POLYGON (Class)
-
-    Description: 
-
-    Methods:
-
-    Reference:
-    '''
 
     w = None
     n = None
@@ -25,11 +16,11 @@ class Polygon:
         '''Constructs a Polygon object (Gamma) with complex vertices w.
 
         Parameters:
-            x_vertices - 1d array of real numbers representing the x coordinates
-            y_vertices - 1d array of real numbers representing the y coordinates
+            - x_vertices: 1d array of real numbers representing x coordinates
+            - y_vertices: 1d array of real numbers representing y coordinates
         
         Notes: 
-            The Polygon is assumed to be bounded. The input vertices must
+            - The Polygon is assumed to be bounded. The input vertices must
             be given counterclockwise.
         '''
 
@@ -120,12 +111,12 @@ class Stripmap:
         '''Constructs a Stripmap object and solves for its parameters.
         
         Parameters:
-            p - a Polygon object
-            index - a two-element array representing the ends of the strip
+            - p: a Polygon object
+            - ends: a two-element array representing the ends of the strip
                     (one-indexed)
         
         Note:
-            The Polygon is assumed to have at least 3 vertices, none of which 
+            - The Polygon is assumed to have at least 3 vertices, none of which 
             are infinite.
         '''
 
@@ -165,13 +156,13 @@ class Stripmap:
         '''Evaluates the forward map at points wp in the polygon.
         
         Parameters:
-            xp - vector of x coords within the polygon whose inverse mapping is 
+            - xp: vector of x coords within the polygon whose inverse mapping is 
                 to be evaluated
-            yp - vector of y coords within the polygon whose inverse mapping is 
+            - yp: vector of y coords within the polygon whose inverse mapping is 
                 to be evaluated
         
         Returns:
-            wp - invmapped points from within the polygon to the infinite strip
+            - wp: invmapped points from within the polygon to the infinite strip
         '''
         eps = .2204 * 10 ** (-16)
 
@@ -196,13 +187,13 @@ class Stripmap:
         '''Evaluates inverse of the map at points wp in the polygon.
         
         Parameters:
-            xp - vector of x coords within the polygon whose inverse mapping is 
+            - xp: vector of x coords within the polygon whose inverse mapping is 
                 to be evaluated
-            yp - vector of y coords within the polygon whose inverse mapping is 
+            - yp: vector of y coords within the polygon whose inverse mapping is 
                 to be evaluated
         
         Returns:
-            zp - invmapped points from within the polygon to the infinite strip
+            - zp: invmapped points from within the polygon to the infinite strip
         '''
 
         wp = np.array(xp) + 1j * np.array(yp)
@@ -240,22 +231,6 @@ class Stripmap:
     def get_ends(self):
         '''Returns a copy of ends array.'''
         return copy.copy(self.ends)
-
-# if __name__ == '__main__':
-#     x_vert = np.array([0, 0.5, 1, 1.5, 2, 0, -1, -1.5, -2, -2])
-#     y_vert = np.array([2, 4, 6, 10, 12, 10, 8, 4, 1, 0])
-
-#     wp_x_vert = np.array([0, -1])
-#     wp_y_vert = np.array([6, 2])
-#     wp = np.array([6j, -1 + 2j])
-
-#     test_poly =  Polygon(x_vert, y_vert)
-
-#     test_map = Stripmap(test_poly, [1, 6])
-#     qdata = test_map.get_qdata()
-
-#     print()
-#     print(test_map.evalinv(wp_x_vert, wp_y_vert))
 
     
 
