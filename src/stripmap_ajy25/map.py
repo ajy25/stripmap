@@ -2,15 +2,17 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import copy
+from shapely.geometry import Point as ShapelyPoint
+from shapely.geometry.polygon import Polygon as ShapelyPoly
 
-from num_methods import stparam, stmap, stinvmap, findz0, stderiv
+from num_methods import stparam, stmap, stinvmap
 
 class Polygon:
 
     w = None
     n = None
     alpha = None
-
+    shapely_poly = None
 
     def __init__(self, x_vertices: np.array, y_vertices: np.array) -> None:
         '''Constructs a Polygon object (Gamma) with complex vertices w.
@@ -27,6 +29,14 @@ class Polygon:
         # check if input is valid
         if len(x_vertices) != len(y_vertices):
             raise Exception('Invalid input vertices.')
+
+        vect = []
+
+        for i in range(len(x_vertices)):
+            tup = (x_vertices[i], y_vertices[i])
+            vect.append(tup)
+
+        self.shapely_poly = ShapelyPoly(vect)
         
         # combine for complex w, determine n
         self.w = np.array(x_vertices) + 1j * np.array(y_vertices)
@@ -35,15 +45,12 @@ class Polygon:
         # compute alpha
         self.compute_angles()
 
-        # method end
-        return
-        
     def compute_angles(self) -> None:
         '''Determines the interior angles alpha from the vertices w.'''
 
         # if angles have already been assigned, do nothing
         if self.alpha != None:
-            return 
+            return
         
         # if no vertices, set alpha to be empty
         if self.n == 0:
@@ -61,16 +68,21 @@ class Polygon:
         if np.abs(np.sum(self.alpha) - (self.n - 2)) > angles_tol:
             raise Warning('Invalid polygon. Angles sum to ' + \
                 str(np.sum(self.alpha)) + '.')
-        
-        # method end
-        return
     
     def plot_poly(self) -> plt.figure:
         '''Returns a matplotlib plot depicting the polygon.'''
+
         fig = plt.figure()
         plt.plot(np.real(np.hstack([self.w, [self.w[0]]])), \
             np.imag(np.hstack([self.w, [self.w[0]]])))
         return fig
+    
+    def is_in_poly(self, test_x: float, test_y: float) -> bool:
+        '''Return true if (test_x, test_y) is within the polygon.'''
+
+        point = ShapelyPoint(test_x, test_y)
+        return self.shapely_poly.contains(point)
+
     
     # getters
     def get_vertices(self) -> np.array:
@@ -172,7 +184,8 @@ class Stripmap:
 
         for i in range(len(yp)):
             if yp[i] > 1 + eps or yp[i] < 0 - eps:
-                print('The y-coord ', yp[i], ' is not within the strip.')
+                raise Warning(str('The y-coord ' + str(yp[i]) + \
+                    ' is not within the strip.'))
 
         zp = np.array(xp) + 1j * np.array(yp)
         self.zp = zp
@@ -181,7 +194,6 @@ class Stripmap:
         self.wp = wp
 
         return wp
-
     
     def evalinv(self, xp: np.array, yp: np.array) -> np.array:
         '''Evaluates inverse of the map at points wp in the polygon.
@@ -195,8 +207,18 @@ class Stripmap:
         Returns:
             - zp: invmapped points from within the polygon to the infinite strip
         '''
+        xp_copy = copy.copy(xp)
+        yp_copy = copy.copy(yp)
 
-        wp = np.array(xp) + 1j * np.array(yp)
+        for i in range(len(xp)):
+            if not self.p.is_in_poly(xp[i], yp[i]):
+                
+                print(str('The point (' + str(xp[i]) + \
+                    ", " + str(yp[i]) + ') is not within the polygon.'))
+                xp_copy = np.delete(xp_copy, i)
+                yp_copy = np.delete(yp, i)
+
+        wp = np.array(xp_copy) + 1j * np.array(yp_copy)
         self.wp = wp
 
         zp = stinvmap(wp, self)
@@ -205,11 +227,10 @@ class Stripmap:
         return zp
     
     def get_info(self) -> str:
-        '''Prints information regarding the map as an easily readable pandas 
-        dataframe.'''
+        '''Returns information regarding the map as a string.'''
 
         out = str(self.info) + "\nc:" + str(self.c)
-        print(out)
+
         return out
     
     def get_w(self) :
@@ -231,6 +252,10 @@ class Stripmap:
     def get_ends(self):
         '''Returns a copy of ends array.'''
         return copy.copy(self.ends)
+
+    def __str__(self):
+        '''Returns a string representation of the map.'''
+        print(self.get_info())
 
     
 

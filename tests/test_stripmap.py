@@ -328,14 +328,117 @@ def rand_points_in_poly(x_vert, y_vert, radius, n) -> tuple:
     out_y = []
 
     while len(out_x) != n:
-        test_x = 0.5 - random.random() * 3
-        test_y = 0.5 - random.random() * 3
+        test_x = (0.5 - random.random()) * radius
+        test_y = (0.5 - random.random()) * radius
         point = ShapelyPoint(test_x, test_y)
         if poly.contains(point):
             out_x.append(test_x)
             out_y.append(test_y)
     
     return out_x, out_y
+
+def rand_points_near_poly(x_vert, y_vert, radius, n) -> tuple:
+
+    from shapely.geometry import Point as ShapelyPoint
+    from shapely.geometry.polygon import Polygon as ShapelyPoly
+
+    vect = []
+
+    for i in range(len(x_vert)):
+        tup = (x_vert[i], y_vert[i])
+        vect.append(tup)
+
+    poly = ShapelyPoly(vect)
+
+    out_x = []
+    out_y = []
+
+    while len(out_x) != n:
+        test_x = (0.5 - random.random()) * radius
+        test_y = (0.5 - random.random()) * radius
+
+        out_x.append(test_x)
+        out_y.append(test_y)
+
+    return out_x, out_y
+
+def test_one_evalinv_with_invalid_points():
+    out = generate_polygon(
+            center=(0, 0),
+            avg_radius=5,
+            irregularity=0.8,
+            spikiness=0.3,
+            num_vertices=20)
+
+    x = []
+    y = []
+
+    for tup in out:
+        x.append(tup[0])
+        y.append(tup[1])
+
+    x_matlab = matlab.double(x, is_complex=False)
+    y_matlab = matlab.double(y, is_complex=False)
+
+    test_poly = Polygon(x, y)
+
+    print('\nNew Polygon.')
+    print(x)
+    print(y)
+    print('')
+
+    ends = [1, 10]
+    print('\nNEXT ENDS: ' + str(ends) + '\t' + str(20) + '-gon:')
+    print(x)
+    print(y)
+    ends_matlab = matlab.double(ends, is_complex=False)
+
+    matlab_result = eng.paramstester(x_matlab, y_matlab, ends_matlab)
+    matlab_result =  np.transpose(np.array(matlab_result[0]))[0]
+
+    test_map = Stripmap(test_poly, ends)
+    result = test_map.get_z()
+
+    print('\nResults')
+    print('matlab z: ', matlab_result)
+    print('python z: ', result)
+    test_one_stparam(x, y, ends)
+    
+
+    # norm of difference of zs
+    result[np.isinf(result)] = 0
+
+    matlab_result[np.isinf(matlab_result)] = 0
+
+    dif_norm = la.norm(result - matlab_result) / la.norm(matlab_result)
+
+    print(np.abs(dif_norm))
+    assert np.abs(dif_norm) < 10 ** (-5)
+
+    # evalinv
+    x_evalinv, y_evalinv = rand_points_near_poly(x, y, 10, 10)
+    x_evalinv_matlab = matlab.double(x_evalinv, is_complex=False)
+    y_evalinv_matlab = matlab.double(y_evalinv, is_complex=False)
+
+
+    matlab_result = eng.evalinvtester(x_matlab, y_matlab, \
+        ends_matlab, x_evalinv_matlab, y_evalinv_matlab)
+    matlab_result =  np.array(matlab_result)
+
+    result = test_map.evalinv(x_evalinv, y_evalinv)
+    
+    print('matlab inverse: ', matlab_result)
+    print('python inverse: ', result)
+
+    # dif_norm = la.norm(result - matlab_result) / la.norm(matlab_result)
+    # print(np.abs(dif_norm))
+
+    test_map.plot_poly()
+    plt.plot(x_evalinv, y_evalinv)
+    plt.show()
+
+    # assert np.abs(dif_norm) < 10 ** (-5)
+
 
 def test_evalinv():
     for n in range(6, 20):
@@ -415,5 +518,7 @@ def test_evalinv():
 
 
 if __name__ == '__main__':
-    random.seed(9)
-    test_evalinv()
+    random.seed(10)
+    test_one_evalinv_with_invalid_points()
+
+

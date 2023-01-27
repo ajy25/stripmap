@@ -938,11 +938,18 @@ def findz0(wp: np.array, map, qdata: np.array) -> tuple:
         
         else:
             not_done = np.logical_not(done)
+
             idx[not_done] = np.remainder(idx[not_done], n) + 1
+            for i in range(len(idx)):
+                if idx[i] >= len(wbase):
+                    idx[i] = 0
+            
+
         
         # print(idx)
 
         not_done = np.logical_not(done)
+        print(not_done)
         w0[not_done] = wbase[idx[not_done]]
         z0[not_done] = zbase[idx[not_done]]
 
