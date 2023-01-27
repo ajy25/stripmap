@@ -164,7 +164,7 @@ class Stripmap:
 
         fig = self.p.plot_poly()
 
-    def eval(self, xp: np.array, yp: np.array) -> np.array:
+    def eval(self, xp: np.array, yp: np.array) -> tuple:
         '''Evaluates the forward map at points wp in the polygon.
         
         Parameters:
@@ -193,9 +193,9 @@ class Stripmap:
         wp = stmap(zp, self)
         self.wp = wp
 
-        return wp
+        return np.real(wp), np.imag(wp)
     
-    def evalinv(self, xp: np.array, yp: np.array) -> np.array:
+    def evalinv(self, xp: np.array, yp: np.array) -> tuple:
         '''Evaluates inverse of the map at points wp in the polygon.
         
         Parameters:
@@ -224,7 +224,7 @@ class Stripmap:
         zp = stinvmap(wp, self)
         self.zp = zp
         
-        return zp
+        return np.real(zp), np.imag(zp)
     
     def get_info(self) -> str:
         '''Returns information regarding the map as a string.'''
@@ -255,7 +255,7 @@ class Stripmap:
 
     def __str__(self):
         '''Returns a string representation of the map.'''
-        print(self.get_info())
+        return(self.get_info())
 
     
 
