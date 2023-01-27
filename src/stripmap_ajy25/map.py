@@ -207,21 +207,27 @@ class Stripmap:
         Returns:
             - zp: invmapped points from within the polygon to the infinite strip
         '''
-        xp_copy = copy.copy(xp)
-        yp_copy = copy.copy(yp)
+
+        zp = np.empty(len(xp), dtype='complex_')
+
+        zp[:] = np.NaN
+
+        idx = []
+        idx = []
 
         for i in range(len(xp)):
-            if not self.p.is_in_poly(xp[i], yp[i]):
+            if self.p.is_in_poly(xp[i], yp[i]):
                 
+                idx.append(i)
+
+            else:
                 print(str('The point (' + str(xp[i]) + \
                     ", " + str(yp[i]) + ') is not within the polygon.'))
-                xp_copy = np.delete(xp_copy, i)
-                yp_copy = np.delete(yp, i)
 
-        wp = np.array(xp_copy) + 1j * np.array(yp_copy)
+        wp = np.array(xp) + 1j * np.array(yp)
         self.wp = wp
 
-        zp = stinvmap(wp, self)
+        zp[idx] = stinvmap(wp[idx], self)
         self.zp = zp
         
         return np.real(zp), np.imag(zp)

@@ -425,7 +425,8 @@ def test_one_evalinv_with_invalid_points():
         ends_matlab, x_evalinv_matlab, y_evalinv_matlab)
     matlab_result =  np.array(matlab_result)
 
-    result = test_map.evalinv(x_evalinv, y_evalinv)
+    a, b = test_map.evalinv(x_evalinv, y_evalinv)
+    result = a + 1j * b
     
     print('matlab inverse: ', matlab_result)
     print('python inverse: ', result)
@@ -434,7 +435,7 @@ def test_one_evalinv_with_invalid_points():
     # print(np.abs(dif_norm))
 
     test_map.plot_poly()
-    plt.plot(x_evalinv, y_evalinv)
+    plt.scatter(x_evalinv, y_evalinv)
     plt.show()
 
     # assert np.abs(dif_norm) < 10 ** (-5)
@@ -507,7 +508,8 @@ def test_evalinv():
                 ends_matlab, x_evalinv_matlab, y_evalinv_matlab)
             matlab_result =  np.array(matlab_result)
 
-            result = test_map.evalinv(x_evalinv, y_evalinv)
+            a, b = test_map.evalinv(x_evalinv, y_evalinv)
+            result = a + 1j * b
             
             print('matlab inverse: ', matlab_result)
             print('python inverse: ', result)
