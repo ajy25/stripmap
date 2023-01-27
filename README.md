@@ -48,7 +48,7 @@ print(y_mapped)
 
 ## Requirements
 
-Python 3.8+, NumPy, SciPy
+Python 3.8+ (NumPy, SciPy, Matplotlib, pandas), [Shapely](https://github.com/shapely/shapely)
 
 ## Note regarding testing
 
