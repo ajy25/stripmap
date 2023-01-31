@@ -499,11 +499,14 @@ def stderiv(zp: np.array, z: np.array, beta: np.array, c: float = 1, \
     
     zcol = np.transpose(z[np.newaxis])
     bcol = np.transpose(beta[np.newaxis])
-    znew = copy.copy(zcol)
-    bnew = copy.copy(bcol)
-    for i in range(npts - 1):
-        znew = np.hstack([znew, zcol])
-        bnew = np.hstack([bnew, bcol])
+    # znew = copy.copy(zcol)
+    # bnew = copy.copy(bcol)
+    # for i in range(npts - 1):
+    #     znew = np.hstack([znew, zcol])
+    #     bnew = np.hstack([bnew, bcol])
+
+    znew = np.tile(zcol, (1, npts))
+    bnew = np.tile(bcol, (1, npts))
     
     terms = np.multiply((zpnew - znew), (-np.pi / 2))
 
@@ -704,18 +707,22 @@ def stmap(zp: np.array, map) -> np.array:
     z = map.get_z()
     beta = map.get_beta()
     c = map.c
+    w = map.get_w()
 
     n = len(z)
 
     zprow = zp[np.newaxis]
-    zpnew = copy.copy(zprow)
-    znew = copy.copy(np.transpose(z[np.newaxis]))
-    w = map.get_w()
+    # zpnew = copy.copy(zprow)
+    # znew = copy.copy(np.transpose(z[np.newaxis]))
+    
 
-    for i in range(n - 1):
-        zpnew = np.vstack([zpnew, zprow])
-    for i in range(lenzp - 1):
-        znew = np.hstack([znew, np.transpose(z[np.newaxis])])
+    # for i in range(n - 1):
+    #     zpnew = np.vstack([zpnew, zprow])
+    # for i in range(lenzp - 1):
+    #     znew = np.hstack([znew, np.transpose(z[np.newaxis])])
+
+    zpnew = np.tile(zprow, (n, 1))
+    znew = np.tile(np.transpose(z[np.newaxis]), (1, lenzp))
 
     temp = np.abs(zpnew - znew)
 
@@ -739,9 +746,10 @@ def stmap(zp: np.array, map) -> np.array:
             " Take care in debugging the variable 'bad'.")
         zf = copy.copy(np.transpose(z[np.newaxis]))
         zf[np.isinf(w)] = np.inf
-        zfnew = copy.copy(zf)
-        for i in range(lenzp - 1):
-            zfnew = np.hstack([zfnew, zf])
+        # zfnew = copy.copy(zf)
+        # for i in range(lenzp - 1):
+        #     zfnew = np.hstack([zfnew, zf])
+        zfnew = np.tile(zf, (1, lenzp))
         
 
         temp = np.abs(zpnew[np.ones([n, 1]),bad] - zfnew)
@@ -803,6 +811,7 @@ def stinvmap(wp: np.array, map) -> np.array:
         return zp
     
     z0, w0 = findz0(wp, map, qdata)
+    print('findz0 complete')
 
     scale = wp[np.logical_not(done)] - w0
 
@@ -852,6 +861,7 @@ def stinvmap(wp: np.array, map) -> np.array:
 
 def findz0(wp: np.array, map, qdata: np.array) -> tuple:
     '''Returns starting points for computing inverses'''
+    print('begin findz0')
     eps = 2.2204 * 10 ** (-16)
     z = map.get_z()
     w = map.get_w()
@@ -900,7 +910,9 @@ def findz0(wp: np.array, map, qdata: np.array) -> tuple:
     not_finished = True
 
     while m > 0 and not_finished:
+        print('m:', m)
         for i in range(n):
+            print(i)
             if i == 0:
                 zbase[i] = np.min((-1, np.real(z[1]))) / factor
             elif i == kinf - 1:
@@ -921,20 +933,25 @@ def findz0(wp: np.array, map, qdata: np.array) -> tuple:
         if len(idx) == 0:
             temp_wp = wp[np.logical_not(done)]
             wp_row = temp_wp[np.newaxis]
-            new_wp = copy.copy(wp_row)
+            # new_wp = copy.copy(wp_row)
             
-            for j in range(n-1):
-                new_wp = np.vstack((new_wp, wp_row))
+            # for j in range(n-1):
+            #     new_wp = np.vstack((new_wp, wp_row))
+            #     print(j)
+            new_wp = np.tile(wp_row, (n, 1))
 
             wbase_row = wbase[np.newaxis]
             wbase_col = np.transpose(wbase_row)
-            new_wbase = copy.copy(wbase_col)
-            for j in range(m-1):
-                new_wbase = np.hstack((new_wbase, wbase_col))
+            # new_wbase = copy.copy(wbase_col)
+            # for j in range(m-1):
+            #     print(j)
+            #     new_wbase = np.hstack((new_wbase, wbase_col))
+
+            new_wbase = np.tile(wbase_col, (1, m))
                 
             idx = np.argmin(np.abs(new_wp - new_wbase), axis=0)
 
-            dist = np.min(np.abs(new_wp - new_wbase), axis=0)
+            # dist = np.min(np.abs(new_wp - new_wbase), axis=0)
         
         else:
             not_done = np.logical_not(done)
@@ -949,11 +966,12 @@ def findz0(wp: np.array, map, qdata: np.array) -> tuple:
         # print(idx)
 
         not_done = np.logical_not(done)
-        print(not_done)
+        # print(not_done)
         w0[not_done] = wbase[idx[not_done]]
         z0[not_done] = zbase[idx[not_done]]
 
         for i in range(n):
+            print(i)
             # print(idx == i)
             active = np.logical_and(idx == i, not_done)
 
@@ -967,6 +985,7 @@ def findz0(wp: np.array, map, qdata: np.array) -> tuple:
                     findactive = np.nonzero(active)[0]
                     # print(findactive)
                     for p in findactive:
+                        # print(p)
                         dif = w0[p] - wp[p]
                         # print(dif)
                         temp_A_add = np.array([np.real(dif), np.imag(dif)])
@@ -986,7 +1005,7 @@ def findz0(wp: np.array, map, qdata: np.array) -> tuple:
 
                             if (wpx * w0x < 0) or \
                                 ((wpx - ln[k]) * (w0x - ln[k]) < 0):
-                                # print('line 980')
+                                print('line 980')
                                 done[p] = 0
                             
                         else:
@@ -1002,9 +1021,9 @@ def findz0(wp: np.array, map, qdata: np.array) -> tuple:
                                     if np.real(np.conj(\
                                         wp[p] - w0[p]) * 1j * direcn[k]) > 0:
                                         done[p] = 0
-                                        # print('line 995')
+                                        print('line 995')
                                 elif s[1] > 0 and s[1] < 1:
-                                    # print('line 998')
+                                    print('line 998')
                                     done[p] = 0
             
                 m = sum(np.logical_not(done))
@@ -1016,7 +1035,7 @@ def findz0(wp: np.array, map, qdata: np.array) -> tuple:
             raise Exception('Error has occurred.')
         else:
             iter = iter + 1
-        factor = random.random()
+        factor = (random.random() + 0.5) / 2
     
 
     return z0, w0

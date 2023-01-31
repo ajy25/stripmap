@@ -5,7 +5,7 @@ import copy
 from shapely.geometry import Point as ShapelyPoint
 from shapely.geometry.polygon import Polygon as ShapelyPoly
 
-from num_methods import stparam, stmap, stinvmap
+from .num_methods import stparam, stmap, stinvmap
 
 class Polygon:
 
@@ -217,7 +217,7 @@ class Stripmap:
 
         for i in range(len(xp)):
             if self.p.is_in_poly(xp[i], yp[i]):
-                
+                print(i)
                 idx.append(i)
 
             else:
