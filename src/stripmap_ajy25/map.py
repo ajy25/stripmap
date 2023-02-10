@@ -3,7 +3,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import copy
 from shapely.geometry import Point as ShapelyPoint
-from shapely.geometry.polygon import Polygon as ShapelyPoly
+from shapely.geometry.polygon import Polygon as ShapelyPoly, orient
+from shapely.geometry.polygon import LinearRing as ShapelyRing
+from shapely.validation import make_valid
 
 from .num_methods import stparam, stmap, stinvmap
 
@@ -26,9 +28,11 @@ class Polygon:
             be given counterclockwise.
         '''
 
+        print('\npolygon initialization attempted')
+
         # check if input is valid
         if len(x_vertices) != len(y_vertices):
-            raise Exception('Invalid input vertices.')
+            raise Exception('invalid input vertices')
 
         vect = []
 
@@ -36,14 +40,32 @@ class Polygon:
             tup = (x_vertices[i], y_vertices[i])
             vect.append(tup)
 
+        ring = ShapelyRing(vect)
+        if not ring.is_simple:
+            print('WARNING: linear ring (polygon bound) is not valid')
+            print('attempting to address invalid ring')
+            vect = self.fix_ring(vect)
+        else:
+            print('polygon appears valid')
+
         self.shapely_poly = ShapelyPoly(vect)
-        
+        self.shapely_poly = orient(self.shapely_poly, sign=1)
+        x_vertices, y_vertices = self.shapely_poly.exterior.coords.xy
+        x_vertices = x_vertices.tolist()
+        y_vertices = y_vertices.tolist()
+        x_vertices.pop()
+        y_vertices.pop()
+
         # combine for complex w, determine n
         self.w = np.array(x_vertices) + 1j * np.array(y_vertices)
+        print(self.w)
         self.n = len(self.w)
 
         # compute alpha
         self.compute_angles()
+
+        print('polygon initialization successful')
+        print('_________________________________\n')
 
     def compute_angles(self) -> None:
         '''Determines the interior angles alpha from the vertices w.'''
@@ -66,22 +88,47 @@ class Polygon:
         # check angles sum to appropriate value
         angles_tol = 1.0 * 10 ** (-5)
         if np.abs(np.sum(self.alpha) - (self.n - 2)) > angles_tol:
-            raise Warning('Invalid polygon. Angles sum to ' + \
-                str(np.sum(self.alpha)) + '.')
+            print('Invalid polygon. Angles sum to ' + \
+                str(np.sum(self.alpha)) + '; expected angle sum is ' + \
+                str(self.n - 2))
     
     def plot_poly(self) -> plt.figure:
         '''Returns a matplotlib plot depicting the polygon.'''
 
         fig = plt.figure()
-        plt.plot(np.real(np.hstack([self.w, [self.w[0]]])), \
-            np.imag(np.hstack([self.w, [self.w[0]]])))
+        # to_plot = self.w
+        to_plot = np.hstack([self.w, [self.w[0]]])
+        plt.plot(np.real(to_plot), np.imag(to_plot))
         return fig
     
     def is_in_poly(self, test_x: float, test_y: float) -> bool:
-        '''Return true if (test_x, test_y) is within the polygon.'''
+        '''Return true if the point (test_x, test_y) is within the polygon.'''
 
         point = ShapelyPoint(test_x, test_y)
         return self.shapely_poly.contains(point)
+    
+    def fix_ring(self, vect: list) -> list:
+        '''Attempts to fix linear ring.'''
+        
+        for i in range(len(vect)):
+            vect_copy = copy.deepcopy(vect)
+            temp = vect_copy.pop(i)
+
+            ring = ShapelyRing(vect_copy)
+            
+            if ring.is_valid:
+
+                for j in range(len(vect_copy)):
+                    
+                    vect_copy_copy = copy.deepcopy(vect_copy)
+                    vect_copy_copy.insert(j, temp)
+                    test_ring = ShapelyRing(vect_copy_copy)
+
+                    if test_ring.is_valid:
+                        return vect_copy_copy
+        
+        print('WARING: linear ring fix attempt unsuccessful')
+        return vect
 
     
     # getters
@@ -132,6 +179,8 @@ class Stripmap:
             are infinite.
         '''
 
+        print('\nmap initialization attempted')
+
         # correct for zero-indexing; we assume input is one-indexed
         ends = np.add(ends, -1)
 
@@ -153,10 +202,11 @@ class Stripmap:
         info_dict = {'vertex': self.p.get_vertices(), 'prevertex': self.z, \
             'alpha': self.p.get_angles(), 'beta': self.beta}
         self.info = pd.DataFrame(data=info_dict)
-        # print(self.info)
-        # print("c:", self.c)
-        
-        # method end
+
+        print('\nmap initialization successful with following parameters:')
+        print(self)
+        print('_______________________________________________________\n')
+
         return
     
     def plot_poly(self) -> None:
@@ -176,6 +226,9 @@ class Stripmap:
         Returns:
             - wp: invmapped points from within the polygon to the infinite strip
         '''
+
+        print('\neval attempted')
+
         eps = .2204 * 10 ** (-16)
 
         if len(xp) != len(yp):
@@ -193,6 +246,9 @@ class Stripmap:
         wp = stmap(zp, self)
         self.wp = wp
 
+        print('eval successful')
+        print('_______________\n')
+
         return np.real(wp), np.imag(wp)
     
     def evalinv(self, xp: np.array, yp: np.array) -> tuple:
@@ -207,6 +263,7 @@ class Stripmap:
         Returns:
             - zp: invmapped points from within the polygon to the infinite strip
         '''
+        print('\nevalinv attempted')
 
         zp = np.empty(len(xp), dtype='complex_')
 
@@ -217,7 +274,7 @@ class Stripmap:
 
         for i in range(len(xp)):
             if self.p.is_in_poly(xp[i], yp[i]):
-                print(i)
+                
                 idx.append(i)
 
             else:
@@ -229,6 +286,9 @@ class Stripmap:
 
         zp[idx] = stinvmap(wp[idx], self)
         self.zp = zp
+
+        print('evalinv successful')
+        print('__________________\n')
         
         return np.real(zp), np.imag(zp)
     
@@ -261,7 +321,7 @@ class Stripmap:
 
     def __str__(self):
         '''Returns a string representation of the map.'''
-        return(self.get_info())
+        return self.get_info()
 
     
 

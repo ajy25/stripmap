@@ -88,9 +88,10 @@ def stparam(map, y_attempt = np.array([])) -> tuple:
     nmlen[np.logical_not(cmplx)] = np.abs(nmlen[np.logical_not(cmplx)])
     nmlen = np.delete(nmlen, 0)
 
-
+    print('\nattempting param solve')
     y = iterate_solvers(y0, n, nb, beta, nmlen, left, \
         right, cmplx, qdata, skip=[])
+    print('param solve successful')
     
     # print(y)
 
@@ -190,7 +191,7 @@ def stpfun(y: np.array, n: int, nb: int, beta: np.array, \
     
     if 0 in rat_test or np.any(np.isinf(rat_test)) or \
         np.any(np.isnan(rat_test)):
-        raise RuntimeWarning('WARNING: SEVERE CROWDING')
+        print('WARNING: SEVERE CROWDING')
     
     cmplx2 = cmplx[1:]
 
@@ -211,7 +212,6 @@ def stpfun(y: np.array, n: int, nb: int, beta: np.array, \
 def iterate_solvers(y0, n, nb, beta, nmlen, left, right, cmplx, qdata, \
     skip: list[str] = [], rec_depth: int = 0):
 
-    print('begin param solve')
     print('recursion depth: ', rec_depth)
 
     if rec_depth == 20:
@@ -810,8 +810,9 @@ def stinvmap(wp: np.array, map) -> np.array:
     if lenwp == 0:
         return zp
     
+    print('\nattempting findz0')
     z0, w0 = findz0(wp, map, qdata)
-    print('findz0 complete')
+    print('findz0 successful\n')
 
     scale = wp[np.logical_not(done)] - w0
 
@@ -830,10 +831,12 @@ def stinvmap(wp: np.array, map) -> np.array:
 
         return np.concatenate((np.real(f), np.imag(f)))
 
+    print('\nattempting ode solve')
     odesolver = solve_ivp(stimapfun, t_span=(0, 1), y0=z0, method='RK23')
+    print('ode solve successful\n')
 
     y = np.transpose(odesolver.y)
-    t = odesolver.t
+    # t = odesolver.t
 
     m = np.shape(y)[0]
     leny = np.shape(y)[1]
@@ -855,13 +858,12 @@ def stinvmap(wp: np.array, map) -> np.array:
         k = k + 1
     
     if np.sum(abs(F) > tol) > 0:
-        raise Warning('Check solution. Warning in stinvmap.')
+        print('Check solution. Warning in stinvmap.')
     
     return zn
 
 def findz0(wp: np.array, map, qdata: np.array) -> tuple:
     '''Returns starting points for computing inverses'''
-    print('begin findz0')
     eps = 2.2204 * 10 ** (-16)
     z = map.get_z()
     w = map.get_w()
@@ -910,9 +912,9 @@ def findz0(wp: np.array, map, qdata: np.array) -> tuple:
     not_finished = True
 
     while m > 0 and not_finished:
-        print('m:', m)
+
         for i in range(n):
-            print(i)
+
             if i == 0:
                 zbase[i] = np.min((-1, np.real(z[1]))) / factor
             elif i == kinf - 1:
@@ -970,8 +972,9 @@ def findz0(wp: np.array, map, qdata: np.array) -> tuple:
         w0[not_done] = wbase[idx[not_done]]
         z0[not_done] = zbase[idx[not_done]]
 
+        print('iterating through ' + str(n) + ' vertex indices')
         for i in range(n):
-            print(i)
+            print('vertex: ', i)
             # print(idx == i)
             active = np.logical_and(idx == i, not_done)
 
