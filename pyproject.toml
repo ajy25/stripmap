@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stripmap"
+version = "1.0.11b"
+authors = [
+  { name="Andrew J Yang", email="andrew_j_yang@brown.edu" },
+]
+description = "Conformal mapping from an infinite strip to a bounded polygon."
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+keywords = ["conformal", "stripmap"]
+dependencies = [
+    "numpy >= 1.21.5",
+    "scipy >= 1.7.3",
+    "pandas >= 1.4.2",
+    "matplotlib >= 3.5.1"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/ajy25/stripmap"
+
+

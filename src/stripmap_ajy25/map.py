@@ -5,9 +5,8 @@ import copy
 from shapely.geometry import Point as ShapelyPoint
 from shapely.geometry.polygon import Polygon as ShapelyPoly, orient
 from shapely.geometry.polygon import LinearRing as ShapelyRing
-from shapely.validation import make_valid
 
-from .num_methods import stparam, stmap, stinvmap
+from num_methods import stparam, stmap, stinvmap
 
 class Polygon:
 
@@ -92,14 +91,15 @@ class Polygon:
                 str(np.sum(self.alpha)) + '; expected angle sum is ' + \
                 str(self.n - 2))
     
-    def plot_poly(self) -> plt.figure:
+    def plot_poly(self) -> tuple:
         '''Returns a matplotlib plot depicting the polygon.'''
 
         fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
         # to_plot = self.w
         to_plot = np.hstack([self.w, [self.w[0]]])
-        plt.plot(np.real(to_plot), np.imag(to_plot))
-        return fig
+        ax.plot(np.real(to_plot), np.imag(to_plot))
+        return fig, ax
     
     def is_in_poly(self, test_x: float, test_y: float) -> bool:
         '''Return true if the point (test_x, test_y) is within the polygon.'''
@@ -127,7 +127,7 @@ class Polygon:
                     if test_ring.is_valid:
                         return vect_copy_copy
         
-        print('WARING: linear ring fix attempt unsuccessful')
+        print('WARNING: linear ring fix attempt unsuccessful')
         return vect
 
     
@@ -145,15 +145,6 @@ class Polygon:
         return self.n
 
 class Stripmap:
-    '''
-    STRIPMAP (Class)
-
-    Description:
-
-    Methods:
-
-    Reference:
-    '''
 
     p = None                # Polygon object: w (vertices), alpha (angles)
     z = None                # nparray, solved prevertices
@@ -172,7 +163,6 @@ class Stripmap:
         Parameters:
             - p: a Polygon object
             - ends: a two-element array representing the ends of the strip
-                    (one-indexed)
         
         Note:
             - The Polygon is assumed to have at least 3 vertices, none of which 
@@ -182,7 +172,7 @@ class Stripmap:
         print('\nmap initialization attempted')
 
         # correct for zero-indexing; we assume input is one-indexed
-        ends = np.add(ends, -1)
+        # ends = np.add(ends, -1)
 
         # set up fields
         self.p = p
@@ -212,7 +202,13 @@ class Stripmap:
     def plot_poly(self) -> None:
         '''Visualization of Polygon vertices and the stripmap.'''
 
-        fig = self.p.plot_poly()
+        fig, ax = self.p.plot_poly()
+        ax.plot(np.real(self.p.w[self.ends[0]]), 
+                np.imag(self.p.w[self.ends[0]]), 'ro')
+        ax.plot(np.real(self.p.w[self.ends[1]]), 
+                np.imag(self.p.w[self.ends[1]]), 'ro')
+        plt.show()
+        return fig, ax
 
     def eval(self, xp: np.array, yp: np.array) -> tuple:
         '''Evaluates the forward map at points wp in the polygon.

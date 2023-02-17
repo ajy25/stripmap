@@ -402,7 +402,7 @@ def test_one_evalinv_with_invalid_points():
     print('\nResults')
     print('matlab z: ', matlab_result)
     print('python z: ', result)
-    test_one_stparam(x, y, ends)
+    test_one_stparam(x, y, np.array(ends) - 1)
     
 
     # norm of difference of zs
@@ -479,7 +479,7 @@ def test_evalinv():
             matlab_result = eng.paramstester(x_matlab, y_matlab, ends_matlab)
             matlab_result =  np.transpose(np.array(matlab_result[0]))[0]
 
-            test_map = Stripmap(test_poly, ends)
+            test_map = Stripmap(test_poly, np.array(ends) - 1)
             result = test_map.get_z()
 
             print('\nResults')
@@ -522,5 +522,7 @@ def test_evalinv():
 if __name__ == '__main__':
     random.seed(10)
     test_one_evalinv_with_invalid_points()
+    test_evalinv()
+    
 
 
